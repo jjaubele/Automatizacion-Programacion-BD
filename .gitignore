@@ -1,0 +1,7 @@
+__pycache__/
+
+# Ignorar archivos de Excel
+*.xls
+*.xlsx
+*.xlsm
+*.xlsb
