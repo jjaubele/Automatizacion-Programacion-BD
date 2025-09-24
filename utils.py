@@ -89,3 +89,13 @@ def rellenar_etas(df_descargas, df_tiempos):
                 df.loc[group.index[i], 'ETA'] = hora_salida + timedelta(hours=int(horas_viaje))
 
     return df
+
+def extraer_nueva_ficha(file, sheet):
+    df_nueva_ficha = pd.read_excel(file, sheet_name=sheet, header=3)
+    df_nueva_ficha.index = range(1, len(df_nueva_ficha) + 1)
+    df_nueva_ficha = df_nueva_ficha[["N° Referencia", "Proveedor",
+                                     "Inicio Ventana", "Fin Ventana", "Inicio Ventana Corta",
+                                     "Fin Ventana Corta"]]
+    df_nueva_ficha.drop_duplicates(subset=["N° Referencia"], keep="first", inplace=True)
+    
+    return df_nueva_ficha

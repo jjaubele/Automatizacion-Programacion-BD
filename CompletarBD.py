@@ -3,28 +3,40 @@ import numpy as np
 import tkinter as tk
 from tkinter import filedialog
 from utils import (extraer_bts, extraer_descargas, extraer_distancias,
-                   extraer_planificacion, extraer_programas, rellenar_etas)
+                   extraer_planificacion, extraer_programas, rellenar_etas,
+                   extraer_nueva_ficha)
 
 # Crear ventana oculta
 root = tk.Tk()
 root.withdraw()
 
 # Abrir diálogo para seleccionar archivo
-PATH_PROGRAMACION = filedialog.askopenfilename(
-    title="Selecciona la programación de descargas",
+PATH_NUEVA_FICHA = filedialog.askopenfilename(
+    title="Selecciona el archivo de nueva ficha",
     filetypes=[("Excel files", "*.xlsx *.xls")]
 )
 PATH_DISTANCIAS = filedialog.askopenfilename(
     title="Selecciona el archivo de distancias",
     filetypes=[("Excel files", "*.xlsx *.xls")]
 )
+PATH_PROGRAMACION = filedialog.askopenfilename(
+    title="Selecciona la programación de descargas",
+    filetypes=[("Excel files", "*.xlsx *.xls")]
+)
 root.destroy()
+
+try: 
+    FECHA_PROGRAMACION = " ".join(PATH_PROGRAMACION.split("/")[-1].split(".")[0].split()[-3:])
+    PATH_OUTPUT = f"Base de datos Estimación Semanal {FECHA_PROGRAMACION}.xlsx"
+except:
+    PATH_OUTPUT = "Base de datos Estimación Semanal.xlsx"
 
 df_bts = extraer_bts(PATH_PROGRAMACION, "Buques")
 df_planificacion = extraer_planificacion(PATH_PROGRAMACION, "Planificación")
 df_descargas = extraer_descargas(df_planificacion)
 df_programas = extraer_programas(df_planificacion)
 df_programas.columns = ["ETA", "Nombre programa"]
+df_nueva_ficha = extraer_nueva_ficha(PATH_NUEVA_FICHA, "Programación de buques")
 matriz_de_distancias = extraer_distancias("Distancias entre puertos.xlsx", "Datos")
 VELOCIDAD_MEDIA = 12  # nudos
 # Calcular matriz de tiempos aproximando en horas al entero superior
@@ -90,4 +102,31 @@ df_descargas_agrupadas = rellenar_etas(df_descargas_agrupadas, matriz_de_tiempos
 df_BD = df_descargas_agrupadas[["N° Referencia", "Nombre del BT", "Producto", "Alias", "Volumen total", "ETA", "Fecha fin"]]
 df_BD.columns = ["CC", "Nombre BT", "Producto", "Puerto", "Volumen", "ETA", "Fin descarga"]
 
-df_BD.to_excel("Base de Datos Descargas.xlsx", index=False)
+# Agregar proveedor y ventanas desde nueva ficha
+df_nueva_ficha = df_nueva_ficha[df_nueva_ficha["N° Referencia"].isin(df_BD["CC"])]
+for col in ["Inicio Ventana Corta", "Fin Ventana Corta"]:
+    df_nueva_ficha[col] = pd.to_datetime(df_nueva_ficha[col], errors="coerce")
+
+df_nueva_ficha["Inicio Ventana"] = df_nueva_ficha["Inicio Ventana Corta"].combine_first(pd.to_datetime(df_nueva_ficha["Inicio Ventana"]))
+df_nueva_ficha["Final Ventana"] = df_nueva_ficha["Fin Ventana Corta"].combine_first(pd.to_datetime(df_nueva_ficha["Fin Ventana"]))
+
+# Eliminar columnas de ventanas cortas y antigua ventana
+df_nueva_ficha = df_nueva_ficha.drop(columns=["Inicio Ventana Corta", "Fin Ventana Corta", "Fin Ventana"])
+df_BD = df_BD.merge(df_nueva_ficha, left_on="CC", right_on="N° Referencia").drop(columns=["N° Referencia"])
+
+# Agregar columnas vacías
+columnas_vacias = ["Fecha de programación", "Semana", "Año", "Mes", "Horas Laytime", 
+                   "Demurrage"]
+for col in columnas_vacias:
+    df_BD[col] = [np.nan] * len(df_BD)
+
+# Reordenar columnas
+df_BD = df_BD[["Fecha de programación", "Semana", "Año", "Mes", "Horas Laytime",
+               "CC", "Nombre BT", "Proveedor", "Producto", "Demurrage", "Puerto",
+               "Volumen", "Inicio Ventana", "Final Ventana", "ETA", "Fin descarga"]]
+
+for col in ["Inicio Ventana", "Final Ventana", "Fin descarga"]:
+    df_BD[col] = pd.to_datetime(df_BD[col]).dt.strftime("%d-%m-%Y")
+df_BD["ETA"] = pd.to_datetime(df_BD["ETA"]).dt.strftime("%d-%m-%Y %H:%M")
+
+df_BD.to_excel(PATH_OUTPUT, index=False)
