@@ -2,6 +2,9 @@ import pandas as pd
 import numpy as np
 from datetime import timedelta
 
+FIRST_ROW = 12
+LAST_ROW = 61
+
 def int_to_excel_col(n):
     result = ""
     while n > 0:
@@ -39,7 +42,7 @@ def extraer_descargas(df_planificacion):
     df_descargas = pd.DataFrame({"Fecha": [], "Abrev.": [], "Volumen": [], "Columna": []})
     columnas = ["M", "S", "Y", "AE", "AK", "AQ", "AW", "BC", "BI", "BO", "BU", "CA", "CF", "CK", "CP", "CU", "DA"]
     for col in columnas:
-        descargas_parciales = df_planificacion.loc[12:61, ["B", col, next_excel_col(col)]].dropna()
+        descargas_parciales = df_planificacion.loc[FIRST_ROW:LAST_ROW, ["B", col, next_excel_col(col)]].dropna()
         descargas_parciales.columns = ["Fecha", "Abrev.", "Volumen"]
         descargas_parciales["Columna"] = [col] * len(descargas_parciales)
         df_descargas = pd.concat([df_descargas, descargas_parciales], ignore_index=True)
@@ -54,7 +57,7 @@ def extraer_distancias(file, sheet):
     return df_distancias
 
 def extraer_programas(df_planificacion):
-    df_programas = df_planificacion.loc[12:61, ["B", "J"]].dropna()
+    df_programas = df_planificacion.loc[FIRST_ROW:LAST_ROW, ["B", "J"]].dropna()
     df_programas.columns = ["Fecha", "Nombre programa"]
     return df_programas
 
@@ -81,7 +84,6 @@ def rellenar_etas(df_descargas, df_tiempos):
                 
                 # Horas de viaje desde la matriz
                 horas_viaje = df_tiempos.loc[ciudad_origen, ciudad_destino.upper()]
-                horas_viaje = horas_viaje
                 
                 # Rellenar ETA
                 df.loc[group.index[i], 'ETA'] = hora_salida + timedelta(hours=int(horas_viaje))
