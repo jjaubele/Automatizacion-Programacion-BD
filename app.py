@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import signal
+import os
 from utils import (extraer_bts, extraer_descargas, extraer_distancias,
                    extraer_planificacion, extraer_programas, rellenar_etas,
                    extraer_nueva_ficha)
@@ -8,7 +10,7 @@ from utils import (extraer_bts, extraer_descargas, extraer_distancias,
 st.title("Automatización Programación Descargas")
 
 # Subir archivos
-PATH_DISTANCIAS = st.file_uploader("Sube la Matriz de Distancias", type=["xlsx", "xls"])
+PATH_DISTANCIAS = "Distancias entre puertos.xlsx"
 PATH_PROGRAMACION = st.file_uploader("Sube la Programación de Descargas", type=["xlsx", "xls"])
 PATH_NUEVA_FICHA = st.file_uploader("Sube la Nueva Ficha", type=["xlsx", "xls"])
 
@@ -18,7 +20,7 @@ FILE_NAME = f"Base de datos Estimación Semanal {fecha_programacion.strftime('%d
 
 if st.button("Procesar Archivos"):
     if not (PATH_DISTANCIAS and PATH_PROGRAMACION and PATH_NUEVA_FICHA):
-        st.error("Debes subir los tres archivos Excel.")
+        st.error("Faltan uno o más archivos por subir.")
     else:
         try:
             df_bts = extraer_bts(PATH_PROGRAMACION, "Buques")
@@ -118,12 +120,9 @@ if st.button("Procesar Archivos"):
             df_BD["ETA"] = pd.to_datetime(df_BD["ETA"]).dt.strftime("%d-%m-%Y %H:%M")
 
             df_BD.to_excel(FILE_NAME, index=False)
-            # st.download_button(
-            #     label="Descargar Base de Datos",
-            #     data=open(FILE_NAME, "rb").read(),
-            #     file_name=FILE_NAME,
-            #     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            # )
             st.success(f"Archivo procesado y guardado como {FILE_NAME}")
         except Exception as e:
             st.error(f"Error al procesar los archivos: {e}")
+
+if st.button("Cerrar aplicación"):
+    os.kill(os.getpid(), signal.SIGTERM)
