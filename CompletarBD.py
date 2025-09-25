@@ -41,8 +41,6 @@ matriz_de_distancias = extraer_distancias("Distancias entre puertos.xlsx", "Dato
 VELOCIDAD_MEDIA = 12  # nudos
 # Calcular matriz de tiempos aproximando en horas al entero superior
 matriz_de_tiempos = np.ceil(matriz_de_distancias / VELOCIDAD_MEDIA).astype(int)
-matriz_de_tiempos
-
 
 df_productos = pd.DataFrame({"Producto": ["Diesel A1", "Gas 93", "Gas 97", "Jet A1"]})
 df_plantas = pd.DataFrame({"Planta": ["PLANTA IQUIQUE", "PLANTA MEJILLONES", "PLANTA CALDERA",
