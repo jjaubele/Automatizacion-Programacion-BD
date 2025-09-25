@@ -8,3 +8,6 @@ __pycache__/
 
 # Excluir al archivo de distancias de la regla anterior
 !Distancias entre puertos.xlsx
+
+# Ignorar archivos de entorno virtual
+venv/

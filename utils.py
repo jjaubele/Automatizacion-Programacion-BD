@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import calendar
 from datetime import timedelta
 
 FIRST_ROW = 12
@@ -22,6 +23,13 @@ def next_excel_col(col):
     col_int = excel_col_to_int(col)
     next_col_int = col_int + 1
     return int_to_excel_col(next_col_int)
+
+def get_week_of_month(year, month, day):
+    month_calendar = calendar.monthcalendar(year, month)
+    for week_number, week in enumerate(month_calendar, start=1):
+        if day in week:
+            return "Semana " + str(week_number)
+    return None # Should not happen for a valid date
 
 def extraer_planificacion(file, sheet):
     df_planificacion = pd.read_excel(file, sheet_name=sheet, header=None)

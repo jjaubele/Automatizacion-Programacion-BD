@@ -5,7 +5,7 @@ import signal
 import os
 from utils import (extraer_bts, extraer_descargas, extraer_distancias,
                    extraer_planificacion, extraer_programas, rellenar_etas,
-                   extraer_nueva_ficha)
+                   extraer_nueva_ficha, get_week_of_month)
 
 st.title("Automatización Programación Descargas")
 
@@ -104,18 +104,22 @@ if st.button("Procesar Archivos"):
             df_nueva_ficha = df_nueva_ficha.drop(columns=["Inicio Ventana Corta", "Fin Ventana Corta", "Fin Ventana"])
             df_BD = df_BD.merge(df_nueva_ficha, left_on="CC", right_on="N° Referencia").drop(columns=["N° Referencia"])
 
+            
             # Agregar columnas vacías
             columnas_vacias = ["Fecha de programación", "Semana", "Año", "Mes", "Horas Laytime", 
                             "Demurrage"]
             for col in columnas_vacias:
                 df_BD[col] = [np.nan] * len(df_BD)
 
+            df_BD["Fecha de programación"] = fecha_programacion
+            df_BD["Semana"] = get_week_of_month(fecha_programacion.year, fecha_programacion.month, fecha_programacion.day)
+
             # Reordenar columnas
             df_BD = df_BD[["Fecha de programación", "Semana", "Año", "Mes", "Horas Laytime",
                         "CC", "Nombre BT", "Proveedor", "Producto", "Demurrage", "Puerto",
                         "Volumen", "Inicio Ventana", "Final Ventana", "ETA", "Fin descarga"]]
 
-            for col in ["Inicio Ventana", "Final Ventana", "Fin descarga"]:
+            for col in ["Inicio Ventana", "Final Ventana", "Fin descarga", "Fecha de programación"]:
                 df_BD[col] = pd.to_datetime(df_BD[col]).dt.strftime("%d-%m-%Y")
             df_BD["ETA"] = pd.to_datetime(df_BD["ETA"]).dt.strftime("%d-%m-%Y %H:%M")
 
