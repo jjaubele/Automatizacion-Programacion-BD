@@ -29,7 +29,7 @@ def get_week_of_month(year, month, day):
     for week_number, week in enumerate(month_calendar, start=1):
         if day in week:
             return "Semana " + str(week_number)
-    return None # Should not happen for a valid date
+    return None 
 
 def extraer_planificacion(file, sheet):
     df_planificacion = pd.read_excel(file, sheet_name=sheet, header=None)
