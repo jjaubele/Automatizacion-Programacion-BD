@@ -1,0 +1,15 @@
+# Automatizacion-Programacion-BD
+
+## Prerrequisitos
+
+* Python 3.8+ instalado y agregado al PATH.
+
+## Instrucciones de uso
+
+1. Al usar por primera vez, hacer doble click sobre el archivo *Dependencies_Install.bat*. Esto instalará un entorno virtual (venv/) con todas las dependencias en su interior.
+
+2. De no ser la primera vez, solo arrancar el archivo haciendo doble click en *Automatización.bat*
+
+3. Subir una programación y un versión actualizada de la nueva ficha y seleccionar una fecha de programación. Hacer click en "Procesar Archivos", esto generará el Archivo *Base de datos de Estimación Semanal %DD-%MM-%YYYY*.
+
+4. Al terminar de usar la herramienta hacer click en "Cerrar aplicación".
