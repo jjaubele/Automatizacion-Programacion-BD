@@ -42,7 +42,7 @@ def extraer_bts(file, sheet):
     df_bts = pd.read_excel(file, sheet_name=sheet, header=0)
     df_bts.index = range(1, len(df_bts) + 1)
     df_bts = df_bts[["N° Referencia", "Nombre programa", "Nombre del BT", "Abrev."]]
-    df_bts.drop_duplicates(subset=["Abrev."], keep="first", inplace=True)
+    df_bts.drop_duplicates(subset=["N° Referencia"], keep="first", inplace=True)
     
     return df_bts
 
