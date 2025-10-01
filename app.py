@@ -18,6 +18,10 @@ PATH_NUEVA_FICHA = st.file_uploader("Sube la Nueva Ficha", type=["xlsx", "xls"])
 fecha_programacion = st.date_input("Selecciona la fecha de programación")
 FILE_NAME = f"Base de datos Estimación Semanal {fecha_programacion.strftime('%d-%m-%Y')}.xlsx"
 
+Meses = {1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 
+         5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto", 
+         9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"}
+
 if st.button("Procesar Archivos"):
     if not (PATH_DISTANCIAS and PATH_PROGRAMACION and PATH_NUEVA_FICHA):
         st.error("Faltan uno o más archivos por subir.")
@@ -122,6 +126,19 @@ if st.button("Procesar Archivos"):
             for col in ["Inicio Ventana", "Final Ventana", "Fin descarga", "Fecha de programación"]:
                 df_BD[col] = pd.to_datetime(df_BD[col]).dt.strftime("%d-%m-%Y")
             df_BD["ETA"] = pd.to_datetime(df_BD["ETA"]).dt.strftime("%d-%m-%Y %H:%M")
+
+            # Agregar mes y año de mayor volumen de descarga a un programa
+            df_descargas_completo["Fecha"] = pd.to_datetime(df_descargas_completo["Fecha"])
+            df_descargas_completo["Mes_Año"] = df_descargas_completo["Fecha"].dt.to_period("M")
+            vol_por_mes = df_descargas_completo.groupby(["N° Referencia", "Mes_Año"], as_index=False)["Volumen"].sum()
+            mes_mayor_volumen = vol_por_mes.loc[vol_por_mes.groupby("N° Referencia")["Volumen"].idxmax()]
+            df_BD = df_BD.merge(mes_mayor_volumen[["N° Referencia", "Mes_Año"]],
+                        left_on="CC", right_on="N° Referencia", how="left").drop(columns=["N° Referencia"])
+            df_BD["Mes"] = df_BD["Mes_Año"].dt.month
+            df_BD["Año"] = df_BD["Mes_Año"].dt.year
+            df_BD.drop(columns=["Mes_Año"], inplace=True)
+            df_BD.index = range(1, len(df_BD) + 1)
+            df_BD["Mes"] = df_BD["Mes"].map(Meses)
 
             df_BD.to_excel(FILE_NAME, index=False)
             st.success(f"Archivo procesado y guardado como {FILE_NAME}")
