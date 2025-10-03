@@ -95,7 +95,7 @@ if st.button("Procesar Archivos"):
             # Descargar archivo
             with open(FILE_NAME, "rb") as file:
                 btn = st.download_button(
-                    label="Descargar Base de Datos",
+                    label="Descargar Archivo",
                     data=file,
                     file_name=FILE_NAME,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
