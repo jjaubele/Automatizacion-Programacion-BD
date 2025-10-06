@@ -44,7 +44,7 @@ def extraer_tiempos_de_viaje(file, sheet):
 def extraer_programas(df_planificacion):
     df_programas = df_planificacion.loc[FIRST_ROW:LAST_ROW, ["B", "J"]].dropna()
     df_programas.columns = ["ETA", "Nombre programa"]
-
+    df_programas["ETA"] = pd.to_datetime(df_programas["ETA"]).apply(lambda dt: dt.replace(hour=12, minute=0, second=0) if pd.notna(dt) else dt)
     return df_programas
 
 def extraer_nueva_ficha(file, sheet):
