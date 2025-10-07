@@ -27,7 +27,7 @@ if st.button("Procesar Archivos"):
             # ========= Parte 1 =============
             df_bts = extraer_bts(PATH_PROGRAMACION, "Buques")
             df_planificacion = extraer_planificacion(PATH_PROGRAMACION, "Planificación")
-            df_descargas = extraer_descargas(df_planificacion)
+            df_descargas = extraer_descargas(df_planificacion, ignore_not_bts=True, df_bts=df_bts)
             df_programas = extraer_programas(df_planificacion)
             matriz_de_tiempos = extraer_tiempos_de_viaje("Distancias entre puertos.xlsx", "Datos")
 

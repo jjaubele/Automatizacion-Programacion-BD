@@ -18,6 +18,10 @@ if st.button("Procesar Archivos"):
     else:
         try:
             df_bts = extraer_bts(PATH_PROGRAMACION, "Buques")
+            puma_row = {'N° Referencia': np.nan, 'Nombre programa': 'Puma', 'Nombre del BT': 'Puma', 'Abrev.': 'Puma'}
+            enap_row = {'N° Referencia': np.nan, 'Nombre programa': 'Enap', 'Nombre del BT': 'Enap', 'Abrev.': 'Enap'}
+            df_bts = pd.concat([df_bts, pd.DataFrame([puma_row, enap_row])], ignore_index=True) 
+            
             df_planificacion = extraer_planificacion(PATH_PROGRAMACION, "Planificación")
             df_descargas = extraer_descargas(df_planificacion, ignore_not_bts=False)
 
