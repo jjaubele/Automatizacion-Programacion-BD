@@ -17,10 +17,13 @@ def extraer_bts(file, sheet):
     df_bts.index = range(1, len(df_bts) + 1)
     df_bts = df_bts[["N° Referencia", "Nombre programa", "Nombre del BT", "Abrev."]]
     df_bts.drop_duplicates(subset=["N° Referencia"], keep="first", inplace=True)
+    puma_row = {'N° Referencia': np.nan, 'Nombre programa': 'Puma', 'Nombre del BT': 'Puma', 'Abrev.': 'Puma'}
+    enap_row = {'N° Referencia': np.nan, 'Nombre programa': 'Enap', 'Nombre del BT': 'Enap', 'Abrev.': 'Enap'}
+    df_bts = pd.concat([df_bts, pd.DataFrame([puma_row, enap_row])], ignore_index=True)
     
     return df_bts
 
-def extraer_descargas(df_planificacion):
+def extraer_descargas(df_planificacion, ignore_not_bts=True):
     df_descargas = pd.DataFrame({"Fecha": [], "Abrev.": [], "Volumen": [], "Columna": []})
     columnas = ["M", "S", "Y", "AE", "AK", "AQ", "AW", "BC", "BI", "BO", "BU", "CA", "CF", "CK", "CP", "CU", "DA"]
     for col in columnas:
@@ -28,7 +31,8 @@ def extraer_descargas(df_planificacion):
         descargas_parciales.columns = ["Fecha", "Abrev.", "Volumen"]
         descargas_parciales["Columna"] = [col] * len(descargas_parciales)
         df_descargas = pd.concat([df_descargas, descargas_parciales], ignore_index=True)
-    df_descargas = df_descargas[(df_descargas["Abrev."] != "Enap") & (df_descargas["Abrev."] != "Puma")]
+    if ignore_not_bts:
+        df_descargas = df_descargas[(df_descargas["Abrev."] != "Enap") & (df_descargas["Abrev."] != "Puma")]
 
     return df_descargas
 
@@ -45,6 +49,10 @@ def extraer_programas(df_planificacion):
     df_programas = df_planificacion.loc[FIRST_ROW:LAST_ROW, ["B", "J"]].dropna()
     df_programas.columns = ["ETA", "Nombre programa"]
     df_programas["ETA"] = pd.to_datetime(df_programas["ETA"]).apply(lambda dt: dt.replace(hour=12, minute=0, second=0) if pd.notna(dt) else dt)
+    puma_row = {'ETA': pd.NaT, 'Nombre programa': 'Puma'}
+    enap_row = {'ETA': pd.NaT, 'Nombre programa': 'Enap'}
+    df_programas = pd.concat([df_programas, pd.DataFrame([puma_row, enap_row])], ignore_index=True)
+
     return df_programas
 
 def extraer_nueva_ficha(file, sheet):
