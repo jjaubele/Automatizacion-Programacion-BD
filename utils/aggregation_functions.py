@@ -10,7 +10,7 @@ MESES = {1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
 def agrupar_descargas(df_descargas_completo):
     df = df_descargas_completo.copy()
     df["Fecha"] = pd.to_datetime(df["Fecha"])
-    df["diff"] = (df.groupby(["N° Referencia", "Producto", "Planta"])["Fecha"].diff().dt.days)
+    df["diff"] = (df.groupby(["Nombre programa", "Producto", "Planta"])["Fecha"].diff().dt.days)
     df["Grupo"] = (df["diff"] != 1).cumsum()
     df_descargas_agrupadas = (df.groupby("Grupo", as_index=False).agg({"Fecha": ["min", "max"],
                                                                        "Volumen": "sum"}))
@@ -66,7 +66,6 @@ def asignar_año_mes(df_descargas_completo, df_BD):
     return df_BD
 
 def formato_BD(df_descargas_por_programa, df_descargas_completo, fecha_de_programacion):
-
     df_BD = pd.DataFrame({
         "Fecha de programación": pd.Series([fecha_de_programacion] * len(df_descargas_por_programa)).dt.strftime("%d-%m-%Y"),
         "Semana": [get_week_of_month(fecha_de_programacion.year, fecha_de_programacion.month, fecha_de_programacion.day)] * len(df_descargas_por_programa),
@@ -89,4 +88,14 @@ def formato_BD(df_descargas_por_programa, df_descargas_completo, fecha_de_progra
     df_BD = asignar_año_mes(df_descargas_completo, df_BD)
     
     return df_BD
+
+def formato_lista_vertical(df_descargas_agrupadas):
+    df_lista_vertical = df_descargas_agrupadas.copy()
+    df_lista_vertical["Operación"] = [np.nan] * len(df_lista_vertical)
+    df_lista_vertical = df_lista_vertical[["Nombre del BT", "N° Referencia", "Fecha inicio", "Fecha fin", "Operación", "Planta", "Producto", "Volumen total"]]
+    df_lista_vertical.columns = ["BT", "CC", "Fecha inicio", "Fecha fin", "Operación", "Planta", "Producto", "Volumen"]
+    df_lista_vertical["Fecha inicio"] = df_lista_vertical["Fecha inicio"].dt.strftime('%d-%m-%Y')
+    df_lista_vertical["Fecha fin"] = df_lista_vertical["Fecha fin"].dt.strftime('%d-%m-%Y')
+    
+    return df_lista_vertical
 
