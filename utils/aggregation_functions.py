@@ -1,5 +1,7 @@
 import pandas as pd
+import numpy as np
 from datetime import timedelta
+from utils.utils import get_week_of_month
 
 MESES = {1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 
          5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto", 
@@ -8,7 +10,7 @@ MESES = {1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
 def agrupar_descargas(df_descargas_completo):
     df = df_descargas_completo.copy()
     df["Fecha"] = pd.to_datetime(df["Fecha"])
-    df["diff"] = (df.groupby(["Nombre programa", "Producto", "Planta"])["Fecha"].diff().dt.days)
+    df["diff"] = (df.groupby(["N° Referencia", "Producto", "Planta"])["Fecha"].diff().dt.days)
     df["Grupo"] = (df["diff"] != 1).cumsum()
     df_descargas_agrupadas = (df.groupby("Grupo", as_index=False).agg({"Fecha": ["min", "max"],
                                                                        "Volumen": "sum"}))
@@ -24,7 +26,9 @@ def agrupar_descargas(df_descargas_completo):
     df_descargas_agrupadas = df_descargas_agrupadas.sort_values(by=["Nombre programa", "Fecha inicio"])
     df_descargas_agrupadas["N° Descarga"] = (df_descargas_agrupadas.groupby("Nombre programa").cumcount() + 1)
     df_descargas_agrupadas.index = range(1, len(df_descargas_agrupadas) + 1)
-    
+    df_descargas_agrupadas["Fecha inicio"] = pd.to_datetime(df_descargas_agrupadas["Fecha inicio"]).apply(lambda dt: dt.replace(hour=15, minute=00, second=00) if pd.notna(dt) else dt)
+    df_descargas_agrupadas["Fecha fin"] = pd.to_datetime(df_descargas_agrupadas["Fecha fin"]).apply(lambda dt: dt.replace(hour=23, minute=00, second=00) if pd.notna(dt) else dt)
+
     return df_descargas_agrupadas
 
 def rellenar_etas(df_descargas_agrupadas, matriz_de_tiempos):
@@ -38,8 +42,7 @@ def rellenar_etas(df_descargas_agrupadas, matriz_de_tiempos):
                 ciudad_origen = prev['Ciudad']
                 ciudad_destino = group.iloc[i]['Ciudad']
 
-                # Hora de salida: fecha fin anterior a las 23:00
-                hora_salida = prev['Fecha fin'].replace(hour=23, minute=0, second=0)
+                hora_salida = prev['Fecha fin']
                 
                 # Si alguna ciudad es NaN (probablemente PUMA o ENAP), tiempo de viaje 0.
                 if pd.isna(ciudad_origen) or pd.isna(ciudad_destino):
@@ -50,7 +53,6 @@ def rellenar_etas(df_descargas_agrupadas, matriz_de_tiempos):
 
 def asignar_año_mes(df_descargas_completo, df_BD):
     df = df_descargas_completo.copy()
-    df["Fecha"] = pd.to_datetime(df["Fecha"])
     df["Mes_Año"] = df["Fecha"].dt.to_period("M")
     vol_por_mes = df.groupby(["N° Referencia", "Mes_Año"], as_index=False)["Volumen"].sum()
     mes_mayor_volumen = vol_por_mes.loc[vol_por_mes.groupby("N° Referencia")["Volumen"].idxmax()]
@@ -59,7 +61,32 @@ def asignar_año_mes(df_descargas_completo, df_BD):
     df_BD["Mes"] = df_BD["Mes_Año"].dt.month
     df_BD["Año"] = df_BD["Mes_Año"].dt.year
     df_BD.drop(columns=["Mes_Año"], inplace=True)
-    df_BD.index = range(1, len(df_BD) + 1)
     df_BD["Mes"] = df_BD["Mes"].map(MESES)
     
     return df_BD
+
+def formato_BD(df_descargas_por_programa, df_descargas_completo, fecha_de_programacion):
+
+    df_BD = pd.DataFrame({
+        "Fecha de programación": pd.Series([fecha_de_programacion] * len(df_descargas_por_programa)).dt.strftime("%d-%m-%Y"),
+        "Semana": [get_week_of_month(fecha_de_programacion.year, fecha_de_programacion.month, fecha_de_programacion.day)] * len(df_descargas_por_programa),
+        "Año": [np.nan] * len(df_descargas_por_programa),
+        "Mes": [np.nan] * len(df_descargas_por_programa),
+        "Horas Laytime": [np.nan] * len(df_descargas_por_programa),
+        "CC": df_descargas_por_programa["N° Referencia"],
+        "Nombre BT": df_descargas_por_programa["Nombre del BT"],
+        "Proveedor": df_descargas_por_programa["Proveedor"],
+        "Producto": df_descargas_por_programa["Producto"],
+        "Demurrage": [np.nan] * len(df_descargas_por_programa),
+        "Puerto": df_descargas_por_programa["Alias"],
+        "Volumen": df_descargas_por_programa["Volumen total"],
+        "Inicio Ventana": df_descargas_por_programa["Inicio Ventana"].dt.strftime("%d-%m-%Y"),
+        "Final Ventana": df_descargas_por_programa["Fin Ventana"].dt.strftime("%d-%m-%Y"),
+        "ETA": df_descargas_por_programa["ETA"].dt.strftime("%d-%m-%Y %H:%M"),
+        "Fin descarga": df_descargas_por_programa["Fecha fin"].dt.strftime("%d-%m-%Y")
+    })
+
+    df_BD = asignar_año_mes(df_descargas_completo, df_BD)
+    
+    return df_BD
+
