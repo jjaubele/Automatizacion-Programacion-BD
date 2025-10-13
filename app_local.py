@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 import signal
 import os
-from utils.aggregation_functions import rellenar_etas, agrupar_descargas, formato_BD
+from utils.aggregation_functions import rellenar_etas, agrupar_descargas, formato_BD, estimar_demurrage
 from utils.extraction_functions import (extraer_bts, extraer_descargas, extraer_tiempos_de_viaje,
                    extraer_planificacion, extraer_programas, extraer_nueva_ficha, extraer_productos_plantas)
 
@@ -40,13 +40,15 @@ if st.button("Procesar Archivos"):
             df_programas_completo["Inicio Ventana"] = df_programas_completo["Inicio Ventana Corta"].combine_first(df_programas_completo["Inicio Ventana"])
             df_programas_completo["Fin Ventana"] = df_programas_completo["Fin Ventana Corta"].combine_first(df_programas_completo["Fin Ventana"])
             df_programas_completo["ETA"] = df_programas_completo["ETA"].combine_first(df_programas_completo["ETA Programa"])
+            df_programas_completo["MONTO ($/DIA)"].fillna(df_programas_completo["MONTO ($/DIA)"].mean(), inplace=True)
             df_programas_completo = df_programas_completo.drop(columns=["Inicio Ventana Corta", "Fin Ventana Corta", "ETA Programa"])
 
             df_descargas_por_programa = df_descargas_agrupadas.merge(df_programas_completo, on="N° Referencia", how="right")
             df_descargas_por_programa["ETA"] = df_descargas_por_programa["ETA"][[True if descarga == 1 else False for descarga in df_descargas_por_programa["N° Descarga"]]]
             rellenar_etas(df_descargas_por_programa, matriz_de_tiempos)
+            df_estimacion = estimar_demurrage(df_descargas_por_programa)
 
-            df_BD = formato_BD(df_descargas_por_programa, df_descargas_completo, FECHA_PROGRAMACION)
+            df_BD = formato_BD(df_estimacion, df_descargas_completo, FECHA_PROGRAMACION)
             df_BD.to_excel(FILE_NAME, index=False)
             st.success(f"Archivo procesado y guardado como {FILE_NAME}")
         except Exception as e:

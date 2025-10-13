@@ -3,6 +3,7 @@ import numpy as np
 from datetime import timedelta
 from utils.utils import get_week_of_month
 
+HORAS_LAYTIME = 132
 MESES = {1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 
          5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto", 
          9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"}
@@ -65,24 +66,54 @@ def asignar_año_mes(df_descargas_completo, df_BD):
     
     return df_BD
 
-def formato_BD(df_descargas_por_programa, df_descargas_completo, fecha_de_programacion):
+def estimar_demurrage(df_descargas_por_programa):
+    df = df_descargas_por_programa.copy()
+    # ETA en ventana o num de descarga > 1
+    # Inicio laytime = min(Inicio Descarga, NOR + 6 horas)
+    inicio_laytime = pd.concat([
+        df['Fecha inicio'],
+        df['ETA'] + pd.Timedelta(hours=6)
+    ], axis=1).min(axis=1)
+
+    # Condición N° de descarga = 1 y ETA < Inicio Ventana
+    # Inicio laytime = min(Inicio Ventana, Inicio Descarga)
+    cond = (df['N° Descarga'] == 1) & (df['ETA'] < df['Inicio Ventana'])
+    inicio_laytime = inicio_laytime.mask(cond, pd.concat([df['Inicio Ventana'], df['Fecha inicio']], axis=1).min(axis=1))
+
+    # Condición N° de descarga = 1 y ETA > Final Ventana
+    # Inicio laytime = Inicio Descarga
+    cond = (df['N° Descarga'] == 1) & (df['ETA'] > df['Fin Ventana'])
+    inicio_laytime = inicio_laytime.mask(cond, df_descargas_por_programa['Fecha inicio'])
+
+    df['Inicio Laytime'] = inicio_laytime
+    df["Laytime descarga (Horas)"] = (df["Fecha fin"] - df["Inicio Laytime"]).dt.total_seconds() / 3600
+    df["Laytime programa (Horas)"] = df.groupby("Nombre programa")["Laytime descarga (Horas)"].transform('sum')
+
+    df["Laytime pactado (Horas)"] = [HORAS_LAYTIME] * len(df)
+    df["Demurrage programa (Horas)"] = df.apply(lambda row: max(0, row["Laytime programa (Horas)"] - row["Laytime pactado (Horas)"]), axis=1)
+    df["Estimación demurrage"] = np.ceil(df["Demurrage programa (Horas)"] * (df["MONTO ($/DIA)"] / 24))
+
+    return df
+
+def formato_BD(df_estimacion, df_descargas_completo, fecha_de_programacion):
     df_BD = pd.DataFrame({
-        "Fecha de programación": pd.Series([fecha_de_programacion] * len(df_descargas_por_programa)).dt.strftime("%d-%m-%Y"),
-        "Semana": [get_week_of_month(fecha_de_programacion.year, fecha_de_programacion.month, fecha_de_programacion.day)] * len(df_descargas_por_programa),
-        "Año": [np.nan] * len(df_descargas_por_programa),
-        "Mes": [np.nan] * len(df_descargas_por_programa),
-        "Horas Laytime": [np.nan] * len(df_descargas_por_programa),
-        "CC": df_descargas_por_programa["N° Referencia"],
-        "Nombre BT": df_descargas_por_programa["Nombre del BT"],
-        "Proveedor": df_descargas_por_programa["Proveedor"],
-        "Producto": df_descargas_por_programa["Producto"],
-        "Demurrage": [np.nan] * len(df_descargas_por_programa),
-        "Puerto": df_descargas_por_programa["Alias"],
-        "Volumen": df_descargas_por_programa["Volumen total"],
-        "Inicio Ventana": df_descargas_por_programa["Inicio Ventana"].dt.strftime("%d-%m-%Y"),
-        "Final Ventana": df_descargas_por_programa["Fin Ventana"].dt.strftime("%d-%m-%Y"),
-        "ETA": df_descargas_por_programa["ETA"].dt.strftime("%d-%m-%Y %H:%M"),
-        "Fin descarga": df_descargas_por_programa["Fecha fin"].dt.strftime("%d-%m-%Y")
+        "Fecha de programación": pd.Series([fecha_de_programacion] * len(df_estimacion)).dt.strftime("%d-%m-%Y"),
+        "Semana": [get_week_of_month(fecha_de_programacion.year, fecha_de_programacion.month, fecha_de_programacion.day)] * len(df_estimacion),
+        "Año": [np.nan] * len(df_estimacion),
+        "Mes": [np.nan] * len(df_estimacion),
+        "Horas Laytime": df_estimacion["Laytime pactado (Horas)"],
+        "CC": df_estimacion["N° Referencia"],
+        "Nombre BT": df_estimacion["Nombre del BT"],
+        "Proveedor": df_estimacion["Proveedor"],
+        "Producto": df_estimacion["Producto"],
+        "Demurrage": df_estimacion["MONTO ($/DIA)"],
+        "Puerto": df_estimacion["Alias"],
+        "Volumen": df_estimacion["Volumen total"],
+        "Inicio Ventana": df_estimacion["Inicio Ventana"].dt.strftime("%d-%m-%Y"),
+        "Final Ventana": df_estimacion["Fin Ventana"].dt.strftime("%d-%m-%Y"),
+        "ETA": df_estimacion["ETA"].dt.strftime("%d-%m-%Y %H:%M"),
+        "Fin descarga": df_estimacion["Fecha fin"].dt.strftime("%d-%m-%Y"),
+        "Estimación demurrage": df_estimacion["Estimación demurrage"]
     })
 
     df_BD = asignar_año_mes(df_descargas_completo, df_BD)
