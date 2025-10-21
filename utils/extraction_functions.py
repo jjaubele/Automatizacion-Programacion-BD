@@ -130,7 +130,7 @@ def extraer_reporte_tankers(file):
         r'.*?(\d{2}-[a-z]{3,4})'             # Ventana inicio
         r'\s+(\d{2}-[a-z]{3,4})'             # Ventana fin
         r'.*?(\d{2}-[a-z]{3,4}|TBD|-)'       # PreBook
-        r'.*?(\d{2}-[a-z]{3,4}|TBD|-)\*?'    # ETA
+        r'.*?(\d{2}-[a-z]{3,4}|TBD|-)\*{0,2}?'    # ETA
         r'\s+(\d{1,2}:\d{2}|-)?')            # Hora (opcional)
     
     matches = pattern.findall(texto)
