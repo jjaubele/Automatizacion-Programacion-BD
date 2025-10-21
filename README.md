@@ -12,13 +12,23 @@
 
 3. Subir una programación y un versión actualizada de la nueva ficha y seleccionar una fecha de programación. Hacer click en "Procesar Archivos", esto generará el Archivo *Base de datos de Estimación Semanal %DD-%MM-%YYYY*.
 
-4. Al terminar de usar la herramienta hacer click en "Cerrar aplicación".
+4. Hacer click en "Descargar Archivo".
+
+5. Al terminar de usar la herramienta hacer click en "Cerrar aplicación".
 
 ## Instrucciones de uso app remota
 
 1. Entrar a la [Automatización](https://automatizacion-programacion-bd.streamlit.app/)
 
 2. Subir una programación y un versión actualizada de la nueva ficha y seleccionar una fecha de programación. Hacer click en "Procesar Archivos", esto generará el Archivo *Base de datos de Estimación Semanal %DD-%MM-%YYYY*.
+
+3. Hacer click en "Descargar Archivo".
+
+## Instrucciones de uso app descargas
+
+1. Entrar a la [Aplicación](https://extraccion-descargas-programacion.streamlit.app/)
+
+2. Subir una programación y seleccionar una fecha de programación (fecha opcional, solo para generar el nombre del archivo). Hacer click en "Procesar Archivos", esto generará el Archivo *Descargas Programación %DD-%MM-%YYYY*.
 
 3. Hacer click en "Descargar Archivo".
 

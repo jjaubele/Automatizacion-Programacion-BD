@@ -5,6 +5,7 @@ __pycache__/
 *.xlsx
 *.xlsm
 *.xlsb
+*.pdf
 
 # Excluir al archivo de distancias de la regla anterior
 !Distancias entre puertos.xlsx
