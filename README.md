@@ -12,7 +12,9 @@
 
 3. Subir una programación y un versión actualizada de la nueva ficha y seleccionar una fecha de programación. Hacer click en "Procesar Archivos", esto generará el Archivo *Base de datos de Estimación Semanal %DD-%MM-%YYYY*.
 
-4. Al terminar de usar la herramienta hacer click en "Cerrar aplicación".
+4. Hacer click en "Descargar Archivo".
+
+5. Al terminar de usar la herramienta hacer click en "Cerrar aplicación".
 
 ## Instrucciones de uso app remota
 

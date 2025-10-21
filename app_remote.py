@@ -3,7 +3,8 @@ import streamlit as st
 import os
 from utils.aggregation_functions import rellenar_etas, agrupar_descargas, formato_BD, estimar_demurrage
 from utils.extraction_functions import (extraer_bts, extraer_descargas, extraer_tiempos_de_viaje,
-                   extraer_planificacion, extraer_programas, extraer_nueva_ficha, extraer_productos_plantas)
+                   extraer_planificacion, extraer_programas, extraer_nueva_ficha,
+                   extraer_productos_plantas, extraer_reporte_tankers)
 
 st.title("Automatización Programación Descargas")
 
@@ -11,6 +12,7 @@ st.title("Automatización Programación Descargas")
 PATH_DISTANCIAS = "Distancias entre puertos.xlsx"
 PATH_PROGRAMACION = st.file_uploader("Sube la Programación de Descargas", type=["xlsx", "xls"])
 PATH_NUEVA_FICHA = st.file_uploader("Sube la Nueva Ficha", type=["xlsx", "xls"])
+PATH_REPORTE_TANKERS = st.file_uploader("Sube el Reporte de Tankers (opcional)", type=["pdf"])
 
 # Selección de fecha
 FECHA_PROGRAMACION = pd.to_datetime(st.date_input("Selecciona la fecha de programación"))
@@ -28,6 +30,8 @@ if st.button("Procesar Archivos"):
             df_productos_plantas = extraer_productos_plantas()
             df_nueva_ficha = extraer_nueva_ficha(PATH_NUEVA_FICHA, "Programación de buques", df_programas=df_programas)
             matriz_de_tiempos = extraer_tiempos_de_viaje("Distancias entre puertos.xlsx", "Datos")
+            if PATH_REPORTE_TANKERS:
+                df_reporte_tankers = extraer_reporte_tankers(PATH_REPORTE_TANKERS)
 
             df_descargas_productos_plantas = df_descargas.merge(df_productos_plantas, on=["Columna"]).drop(columns=["Columna"])
             df_descargas_completo = df_descargas_productos_plantas.merge(df_bts, on=["Abrev."]).drop(columns=["Abrev."])
@@ -39,12 +43,21 @@ if st.button("Procesar Archivos"):
             df_programas_completo["Inicio Ventana"] = df_programas_completo["Inicio Ventana Corta"].combine_first(df_programas_completo["Inicio Ventana"])
             df_programas_completo["Fin Ventana"] = df_programas_completo["Fin Ventana Corta"].combine_first(df_programas_completo["Fin Ventana"])
             df_programas_completo["ETA"] = df_programas_completo["ETA"].combine_first(df_programas_completo["ETA Programa"])
+            # Comentar si no se desea llenar montos faltantes con el promedio
             df_programas_completo["MONTO ($/DIA)"].fillna(df_programas_completo["MONTO ($/DIA)"].mean(), inplace=True)
             df_programas_completo = df_programas_completo.drop(columns=["Inicio Ventana Corta", "Fin Ventana Corta", "ETA Programa"])
 
+            if PATH_REPORTE_TANKERS:
+                df_programas_completo = df_programas_completo.merge(df_reporte_tankers, on=["N° Referencia"], how="left", suffixes=("", " Reporte Tankers"))
+                df_programas_completo["Inicio Ventana"] = df_programas_completo["Inicio Ventana Reporte Tankers"].combine_first(df_programas_completo["Inicio Ventana"])
+                df_programas_completo["Fin Ventana"] = df_programas_completo["Fin Ventana Reporte Tankers"].combine_first(df_programas_completo["Fin Ventana"])
+                df_programas_completo["ETA"] = df_programas_completo["ETA Reporte Tankers"].combine_first(df_programas_completo["ETA"])
+                df_programas_completo = df_programas_completo.drop(columns=["Inicio Ventana Reporte Tankers", "Fin Ventana Reporte Tankers", "ETA Reporte Tankers"])
+
             df_descargas_por_programa = df_descargas_agrupadas.merge(df_programas_completo, on="N° Referencia", how="right")
+            df_descargas_por_programa = df_descargas_por_programa[df_descargas_por_programa["Producto"].notna()]
             df_descargas_por_programa["ETA"] = df_descargas_por_programa["ETA"][[True if descarga == 1 else False for descarga in df_descargas_por_programa["N° Descarga"]]]
-            rellenar_etas(df_descargas_por_programa, matriz_de_tiempos)
+            df_descargas_por_programa = rellenar_etas(df_descargas_por_programa, matriz_de_tiempos)
             df_estimacion = estimar_demurrage(df_descargas_por_programa)
 
             df_BD = formato_BD(df_estimacion, df_descargas_completo, FECHA_PROGRAMACION)

@@ -10,15 +10,14 @@ MESES = {1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
 
 def agrupar_descargas(df_descargas_completo):
     df = df_descargas_completo.copy()
-    df["Fecha"] = pd.to_datetime(df["Fecha"])
     df["diff"] = (df.groupby(["Nombre programa", "Producto", "Planta"])["Fecha"].diff().dt.days)
-    df["Grupo"] = (df["diff"] != 1).cumsum()
-    df_descargas_agrupadas = (df.groupby("Grupo", as_index=False).agg({"Fecha": ["min", "max"],
+    df["Descarga"] = (df["diff"] != 1).cumsum()
+    df_descargas_agrupadas = (df.groupby("Descarga", as_index=False).agg({"Fecha": ["min", "max"],
                                                                        "Volumen": "sum"}))
-    df_descargas_agrupadas.columns = ["Grupo", "Fecha inicio", "Fecha fin", "Volumen total"]
-    df_descargas_completo_sin_duplicados = df.drop_duplicates(subset=["Grupo"])
+    df_descargas_agrupadas.columns = ["Descarga", "Fecha inicio", "Fecha fin", "Volumen total"]
+    df_descargas_completo_sin_duplicados = df.drop_duplicates(subset=["Descarga"])
     df_descargas_agrupadas = df_descargas_agrupadas.merge(
-        df_descargas_completo_sin_duplicados, on="Grupo").drop(columns=["diff", "Fecha", "Volumen"])
+        df_descargas_completo_sin_duplicados, on="Descarga").drop(columns=["diff", "Fecha", "Volumen"])
     df_descargas_agrupadas = df_descargas_agrupadas[[
         "Nombre programa", "N° Referencia", "Nombre del BT", "Producto", "Planta", "Ciudad", "Alias",
         "Fecha inicio", "Fecha fin", "Volumen total"]]
@@ -32,25 +31,70 @@ def agrupar_descargas(df_descargas_completo):
 
     return df_descargas_agrupadas
 
+def asignar_ciudad_a_puma(i, group):
+    current = group.iloc[i]
+    prev_bool = False
+    next_bool = False
+    if i - 1 >= 0:
+        prev = group.iloc[i-1]
+        prev_bool = True
+    if i + 1 < len(group):
+        next = group.iloc[i+1]
+        next_bool = True
+    if prev_bool and next_bool:
+        delta_1 = (current['Fecha inicio'] - prev['Fecha fin']).total_seconds()
+        delta_2 = (next['Fecha inicio'] - current['Fecha fin']).total_seconds()
+        if delta_1 <= delta_2:
+            current['Ciudad'] = prev['Ciudad']
+        else:
+            current['Ciudad'] = next['Ciudad']
+    elif prev_bool:
+        current['Ciudad'] = prev['Ciudad']
+    elif next_bool:
+        current['Ciudad'] = next['Ciudad']
+
+    return current['Ciudad']
+
 def rellenar_etas(df_descargas_agrupadas, matriz_de_tiempos):
+    df_descargas_agrupadas["NOR + 6"] = True
+    df_descargas_agrupadas["Shifting"] = np.nan
     for programa, group in df_descargas_agrupadas.groupby('Nombre programa'):
         group = group.sort_values('N° Descarga').copy()
         for i in range(len(group)):
-            if pd.isna(group.iloc[i]['ETA']):
+            current = group.iloc[i]
+            if pd.isna(current['ETA']):
                 if i == 0:
-                    continue  # No se puede calcular ETA para la primera descarga sin ETA
+                    continue  # No se calcula ETA si es la primera descarga
                 prev = group.iloc[i-1]
                 ciudad_origen = prev['Ciudad']
-                ciudad_destino = group.iloc[i]['Ciudad']
-
+                ciudad_destino = current['Ciudad']
                 hora_salida = prev['Fecha fin']
-                
-                # Si alguna ciudad es NaN (probablemente PUMA o ENAP), tiempo de viaje 0.
+                if pd.isna(ciudad_origen):
+                    ciudad_origen = asignar_ciudad_a_puma(i-1, group)
+                    df_descargas_agrupadas.loc[group.index[i-1], 'Ciudad'] = ciudad_origen
+                if pd.isna(ciudad_destino):
+                    ciudad_destino = asignar_ciudad_a_puma(i, group)
+                    df_descargas_agrupadas.loc[group.index[i], 'Ciudad'] = ciudad_destino
+                # Puma-Puma
                 if pd.isna(ciudad_origen) or pd.isna(ciudad_destino):
-                    df_descargas_agrupadas.loc[group.index[i], 'ETA'] = hora_salida
-                    continue
-                horas_viaje = matriz_de_tiempos.loc[ciudad_origen, ciudad_destino.upper()]
+                    horas_viaje = 0
+                else:
+                    horas_viaje = matriz_de_tiempos.loc[ciudad_origen, ciudad_destino.upper()]
                 df_descargas_agrupadas.loc[group.index[i], 'ETA'] = hora_salida + timedelta(hours=int(horas_viaje))
+                # Puma-Puerto / Puerto-Puma / Puerto-Puerto
+                if horas_viaje == 0:
+                    df_descargas_agrupadas.loc[group.index[i], 'NOR + 6'] = False
+                    # Puma-Puerto
+                    if prev['Planta'] == 'BT PUMA' and current['Planta'] != 'BT PUMA':
+                        df_descargas_agrupadas.loc[group.index[i], 'Shifting'] = 50000
+                    # Puerto-Puma
+                    elif prev['Planta'] != 'BT PUMA' and current['Planta'] == 'BT PUMA':
+                        df_descargas_agrupadas.loc[group.index[i], 'Shifting'] = 5000
+                    # Puerto-Puerto
+                    elif prev['Planta'] != 'BT PUMA' and current['Planta'] != 'BT PUMA':
+                        df_descargas_agrupadas.loc[group.index[i], 'Shifting'] = 50000
+
+    return df_descargas_agrupadas
 
 def asignar_año_mes(df_descargas_completo, df_BD):
     df = df_descargas_completo.copy()
@@ -68,23 +112,34 @@ def asignar_año_mes(df_descargas_completo, df_BD):
 
 def estimar_demurrage(df_descargas_por_programa):
     df = df_descargas_por_programa.copy()
-    # ETA en ventana o num de descarga > 1
-    # Inicio laytime = min(Inicio Descarga, NOR + 6 horas)
-    inicio_laytime = pd.concat([
-        df['Fecha inicio'],
-        df['ETA'] + pd.Timedelta(hours=6)
-    ], axis=1).min(axis=1)
-
-    # Condición N° de descarga = 1 y ETA < Inicio Ventana
-    # Inicio laytime = min(Inicio Ventana, Inicio Descarga)
-    cond = (df['N° Descarga'] == 1) & (df['ETA'] < df['Inicio Ventana'])
-    inicio_laytime = inicio_laytime.mask(cond, pd.concat([df['Inicio Ventana'], df['Fecha inicio']], axis=1).min(axis=1))
-
-    # Condición N° de descarga = 1 y ETA > Final Ventana
+    inicio_laytime = pd.Series([pd.NaT] * len(df))
+    Arribo = pd.Series([pd.NA] * len(df))
+    # Condición 1: ETA < Inicio Ventana y N° de descarga = 1
+    # Inicio laytime = min(Inicio Ventana + 6 horas, Inicio Descarga)
+    cond_1 = (df['N° Descarga'] == 1) & (df['ETA'] < df['Inicio Ventana'])
+    inicio_laytime = inicio_laytime.mask(cond_1, pd.concat([df['Inicio Ventana'] + pd.Timedelta(hours=6), df['Fecha inicio']], axis=1).min(axis=1))
+    Arribo = Arribo.mask(cond_1, "Antes")
+    # Condición 2: ETA en ventana y N° de descarga = 1
+    # Inicio laytime = min(Inicio Descarga, ETA + 6 horas)
+    cond_2 = (df['N° Descarga'] == 1) & (df['ETA'] >= df['Inicio Ventana']) & (df['ETA'] <= df['Fin Ventana'])
+    inicio_laytime = inicio_laytime.mask(cond_2, pd.concat([df['Fecha inicio'], df['ETA'] + pd.Timedelta(hours=6)], axis=1).min(axis=1))
+    Arribo = Arribo.mask(cond_2, "Dentro")
+    # Condición 3: ETA > Fin Ventana y N° de descarga = 1
     # Inicio laytime = Inicio Descarga
-    cond = (df['N° Descarga'] == 1) & (df['ETA'] > df['Fin Ventana'])
-    inicio_laytime = inicio_laytime.mask(cond, df_descargas_por_programa['Fecha inicio'])
+    cond_3 = (df['N° Descarga'] == 1) & (df['ETA'] > df['Fin Ventana'])
+    inicio_laytime = inicio_laytime.mask(cond_3, df_descargas_por_programa['Fecha inicio'])
+    Arribo = Arribo.mask(cond_3, "Después")
+    # Condición 4: N° de descarga > 1 y NOR + 6 = True (Horas de viaje > 0)
+    # Inicio laytime = min(Inicio Descarga, ETA + 6 horas)
+    cond_4 = (df['N° Descarga'] > 1) & (df['NOR + 6'] == True)
+    inicio_laytime = inicio_laytime.mask(cond_4, pd.concat([df['Fecha inicio'], df['ETA'] + pd.Timedelta(hours=6)], axis=1).min(axis=1))
+    # Condición 5: N° de descarga > 1 y NOR + 6 = False (Horas de viaje = 0)
+    # Inicio laytime = ETA (Fin Descarga anterior)
+    cond_5 = (df['N° Descarga'] > 1) & (df['NOR + 6'] == False)
+    inicio_laytime = inicio_laytime.mask(cond_5, df['ETA'])
 
+    df["Arribo"] = Arribo
+    df["Arribo"] = df.groupby("Nombre programa")["Arribo"].transform('first')
     df['Inicio Laytime'] = inicio_laytime
     df["Laytime descarga (Horas)"] = (df["Fecha fin"] - df["Inicio Laytime"]).dt.total_seconds() / 3600
     df["Laytime programa (Horas)"] = df.groupby("Nombre programa")["Laytime descarga (Horas)"].transform('sum')
@@ -113,7 +168,9 @@ def formato_BD(df_estimacion, df_descargas_completo, fecha_de_programacion):
         "Final Ventana": df_estimacion["Fin Ventana"].dt.strftime("%d-%m-%Y"),
         "ETA": df_estimacion["ETA"].dt.strftime("%d-%m-%Y %H:%M"),
         "Fin descarga": df_estimacion["Fecha fin"].dt.strftime("%d-%m-%Y"),
-        "Estimación demurrage": df_estimacion["Estimación demurrage"]
+        "Estimación demurrage": df_estimacion["Estimación demurrage"], 
+        "Demurrage unitario": np.nan * len(df_estimacion), 
+        "Shifting": df_estimacion["Shifting"]
     })
 
     df_BD = asignar_año_mes(df_descargas_completo, df_BD)
