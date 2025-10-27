@@ -42,11 +42,17 @@ def extraer_planificacion(file, sheet):
 
     return df_planificacion
 
-def extraer_bts(file, sheet):
+def extraer_bts(file, sheet, add_puma=False, add_enap=False):
     df_bts = pd.read_excel(file, sheet_name=sheet, header=0)
     df_bts.index = range(1, len(df_bts) + 1)
     df_bts = df_bts[["N° Referencia", "Nombre programa", "Nombre del BT", "Abrev."]]
-    df_bts.drop_duplicates(subset=["N° Referencia"], keep="first", inplace=True)
+    df_bts = df_bts.drop_duplicates(subset=["N° Referencia"], keep="first")
+    if add_puma:
+        puma_row = {'N° Referencia': np.nan, 'Nombre programa': 'Puma', 'Nombre del BT': 'Puma', 'Abrev.': 'Puma'}
+        df_bts = pd.concat([df_bts, pd.DataFrame([puma_row])], ignore_index=True)
+    if add_enap:
+        enap_row = {'N° Referencia': np.nan, 'Nombre programa': 'Enap', 'Nombre del BT': 'Enap', 'Abrev.': 'Enap'}
+        df_bts = pd.concat([df_bts, pd.DataFrame([enap_row])], ignore_index=True)
     
     return df_bts
 

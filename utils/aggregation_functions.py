@@ -172,7 +172,6 @@ def formato_BD(df_estimacion, df_descargas_completo, fecha_de_programacion):
         "Fin descarga": df_estimacion["Fecha fin"].dt.strftime("%d-%m-%Y"),
         "Estimación demurrage": df_estimacion["Estimación demurrage"], 
         "Demurrage unitario": df_estimacion["Demurrage unitario"],
-
         "Shifting": df_estimacion["Shifting"]
     })
 

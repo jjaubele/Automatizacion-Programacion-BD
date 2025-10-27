@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 import os
-from utils.aggregation_functions import rellenar_etas, agrupar_descargas, formato_BD, estimar_demurrage
+from utils.aggregation_functions import rellenar_etas, agrupar_descargas, formato_BD, estimar_demurrage, formato_lista_vertical
 from utils.extraction_functions import (extraer_bts, extraer_descargas, extraer_tiempos_de_viaje,
                    extraer_planificacion, extraer_programas, extraer_nueva_ficha,
                    extraer_productos_plantas, extraer_reporte_tankers)
@@ -16,7 +16,13 @@ PATH_REPORTE_TANKERS = st.file_uploader("Sube el Reporte de Tankers (opcional)",
 
 # Selección de fecha
 FECHA_PROGRAMACION = pd.to_datetime(st.date_input("Selecciona la fecha de programación"))
-FILE_NAME = f"Base de datos Estimación Semanal {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx"
+FILE_NAMES = {
+    "estimacion": f"Estimación Demurrage Completo {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx",
+    "bd": f"Base de Datos Estimación Semanal {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx",
+    "lista_vertical": f"Lista Vertical {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx",
+    "descargas": f"Descargas Programación {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx",
+    "descargas_puma_enap": f"Descargas Programación con Puma y Enap {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx"
+}
 
 if st.button("Procesar Archivos"):
     if not (PATH_DISTANCIAS and PATH_PROGRAMACION and PATH_NUEVA_FICHA):
@@ -24,8 +30,10 @@ if st.button("Procesar Archivos"):
     else:
         try:
             df_bts = extraer_bts(PATH_PROGRAMACION, "Buques")
+            df_bts_puma_enap = extraer_bts(PATH_PROGRAMACION, "Buques", add_puma=True, add_enap=True)
             df_planificacion = extraer_planificacion(PATH_PROGRAMACION, "Planificación")
             df_descargas = extraer_descargas(df_planificacion, ignore_not_bts=True, df_bts=df_bts)
+            df_descargas_puma_enap = extraer_descargas(df_planificacion, ignore_not_bts=False)
             df_programas = extraer_programas(df_planificacion)
             df_productos_plantas = extraer_productos_plantas()
             df_nueva_ficha = extraer_nueva_ficha(PATH_NUEVA_FICHA, "Programación de buques", df_programas=df_programas)
@@ -34,10 +42,16 @@ if st.button("Procesar Archivos"):
                 df_reporte_tankers = extraer_reporte_tankers(PATH_REPORTE_TANKERS)
 
             df_descargas_productos_plantas = df_descargas.merge(df_productos_plantas, on=["Columna"]).drop(columns=["Columna"])
+            df_descargas_productos_plantas_puma_enap = df_descargas_puma_enap.merge(df_productos_plantas, on=["Columna"]).drop(columns=["Columna"])
             df_descargas_completo = df_descargas_productos_plantas.merge(df_bts, on=["Abrev."]).drop(columns=["Abrev."])
+            df_descargas_completo_puma_enap = df_descargas_productos_plantas_puma_enap.merge(df_bts_puma_enap, on=["Abrev."]).drop(columns=["Abrev."])
             df_descargas_completo = df_descargas_completo[["Fecha", "N° Referencia", "Nombre programa", "Nombre del BT",
                                                         "Producto", "Planta", "Ciudad", "Alias", "Volumen"]]
+            df_descargas_completo_puma_enap = df_descargas_completo_puma_enap[["Fecha", "N° Referencia", "Nombre programa", "Nombre del BT",
+                                                        "Producto", "Planta", "Ciudad", "Alias", "Volumen"]]
             df_descargas_agrupadas = agrupar_descargas(df_descargas_completo)
+            df_descargas_agrupadas_puma_enap = agrupar_descargas(df_descargas_completo_puma_enap)
+            df_lista_vertical = formato_lista_vertical(df_descargas_agrupadas_puma_enap)
 
             df_programas_completo = df_programas.merge(df_nueva_ficha, on="N° Referencia", how="left")
             df_programas_completo["Inicio Ventana"] = df_programas_completo["Inicio Ventana Corta"].combine_first(df_programas_completo["Inicio Ventana"])
@@ -61,16 +75,69 @@ if st.button("Procesar Archivos"):
             df_estimacion = estimar_demurrage(df_descargas_por_programa)
 
             df_BD = formato_BD(df_estimacion, df_descargas_completo, FECHA_PROGRAMACION)
-            df_BD.to_excel(FILE_NAME, index=False)
-            # Descargar archivo
-            with open(FILE_NAME, "rb") as file:
-                btn = st.download_button(
-                    label="Descargar Archivo",
-                    data=file,
-                    file_name=FILE_NAME,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-            st.success(f"Archivo procesado y guardado como {FILE_NAME}")
-            os.remove(FILE_NAME)
+            df_lista_vertical = formato_lista_vertical(df_descargas_agrupadas_puma_enap)
+
+            df_estimacion.to_excel(FILE_NAMES["estimacion"], index=False)
+            df_BD.to_excel(FILE_NAMES["bd"], index=False)
+            df_lista_vertical.to_excel(FILE_NAMES["lista_vertical"], index=False)
+            df_descargas_agrupadas.to_excel(FILE_NAMES["descargas"], index=False)
+            df_descargas_agrupadas_puma_enap.to_excel(FILE_NAMES["descargas_puma_enap"], index=False)
+
+            with st.expander("Descargas Agrupadas por Programa"):
+                st.dataframe(df_descargas_agrupadas)
+                with open(FILE_NAMES["descargas"], "rb") as file:
+                    btn = st.download_button(
+                        label="Descargar Descargas Agrupadas",
+                        data=file,
+                        file_name=FILE_NAMES["descargas"],
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                os.remove(FILE_NAMES["descargas"])
+
+            with st.expander("Descargas Agrupadas por Programa (Puma y Enap incluidos)"):
+                st.dataframe(df_descargas_agrupadas_puma_enap)
+                with open(FILE_NAMES["descargas_puma_enap"], "rb") as file:
+                    btn = st.download_button(
+                        label="Descargar Descargas Agrupadas con Puma y Enap",
+                        data=file,
+                        file_name=FILE_NAMES["descargas_puma_enap"],
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                os.remove(FILE_NAMES["descargas_puma_enap"])
+
+            with st.expander("Formato Lista Vertical (formato solicitado por Nicolás)"):
+                st.dataframe(df_lista_vertical)
+                with open(FILE_NAMES["lista_vertical"], "rb") as file:
+                    btn = st.download_button(
+                        label="Descargar Lista Vertical",
+                        data=file,
+                        file_name=f"Lista Vertical {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                os.remove(FILE_NAMES["lista_vertical"])
+
+
+            with st.expander("Base de Datos Estimación Demurrage (Formato Completo)"):
+                st.dataframe(df_estimacion)
+                with open(FILE_NAMES["estimacion"], "rb") as file:
+                    btn = st.download_button(
+                        label="Descargar Estimación Completa",
+                        data=file,
+                        file_name=FILE_NAMES["estimacion"],
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                os.remove(FILE_NAMES["estimacion"])
+
+            with st.expander("Base de Datos Estimación Demurrage (formato Base de Datos)"):
+                st.dataframe(df_BD)
+                with open(FILE_NAMES["bd"], "rb") as file:
+                    btn = st.download_button(
+                        label="Descargar Base de Datos",
+                        data=file,
+                        file_name=FILE_NAMES["bd"],
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                os.remove(FILE_NAMES["bd"])
+                
         except Exception as e:
             st.error(f"Error al procesar los archivos: {e}")
