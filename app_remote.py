@@ -58,7 +58,7 @@ if st.button("Procesar Archivos"):
             df_programas_completo["Fin Ventana"] = df_programas_completo["Fin Ventana Corta"].combine_first(df_programas_completo["Fin Ventana"])
             df_programas_completo["ETA"] = df_programas_completo["ETA"].combine_first(df_programas_completo["ETA Programa"])
             # Comentar si no se desea llenar montos faltantes con el promedio
-            df_programas_completo = df_programas_completo["MONTO ($/DIA)"].fillna(df_programas_completo["MONTO ($/DIA)"].mean())
+            df_programas_completo["MONTO ($/DIA)"] = df_programas_completo["MONTO ($/DIA)"].fillna(df_programas_completo["MONTO ($/DIA)"].mean()).astype(int)
             df_programas_completo = df_programas_completo.drop(columns=["Inicio Ventana Corta", "Fin Ventana Corta", "ETA Programa"])
 
             if PATH_REPORTE_TANKERS:
