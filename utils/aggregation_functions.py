@@ -146,7 +146,9 @@ def estimar_demurrage(df_descargas_por_programa):
 
     df["Laytime pactado (Horas)"] = [HORAS_LAYTIME] * len(df)
     df["Demurrage programa (Horas)"] = df.apply(lambda row: max(0, row["Laytime programa (Horas)"] - row["Laytime pactado (Horas)"]), axis=1)
-    df["Estimación demurrage"] = np.ceil(df["Demurrage programa (Horas)"] * (df["MONTO ($/DIA)"] / 24))
+    df["Demurrage descarga (Horas)"] = df.apply(lambda row: row["Demurrage programa (Horas)"] * row["Laytime descarga (Horas)"] / row["Laytime programa (Horas)"], axis=1)
+    df["Estimación demurrage"] = np.ceil(df["Demurrage descarga (Horas)"] * (df["MONTO ($/DIA)"] / 24))
+    df["Demurrage unitario"] = df.apply(lambda row: row["Estimación demurrage"] / row["Volumen total"] if row["Volumen total"] > 0 else 0, axis=1)
 
     return df
 
@@ -169,7 +171,7 @@ def formato_BD(df_estimacion, df_descargas_completo, fecha_de_programacion):
         "ETA": df_estimacion["ETA"].dt.strftime("%d-%m-%Y %H:%M"),
         "Fin descarga": df_estimacion["Fecha fin"].dt.strftime("%d-%m-%Y"),
         "Estimación demurrage": df_estimacion["Estimación demurrage"], 
-        "Demurrage unitario": np.nan * len(df_estimacion), 
+        "Demurrage unitario": df_estimacion["Demurrage unitario"],
         "Shifting": df_estimacion["Shifting"]
     })
 
