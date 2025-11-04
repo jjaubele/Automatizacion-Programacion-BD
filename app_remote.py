@@ -141,4 +141,8 @@ if st.button("Procesar Archivos"):
                 os.remove(FILE_NAMES["bd"])
                 
         except Exception as e:
-            st.error(f"Error al procesar los archivos: {e}")
+            if e.args[0] == "Abreviaturas duplicadas encontradas en la hoja \"Buques\".":
+                st.error(f"Error al procesar los archivos: {e.args[0]}")
+                st.dataframe(e.args[1])
+            else:
+                st.error(f"Error al procesar los archivos: {e}")

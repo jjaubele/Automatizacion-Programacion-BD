@@ -44,16 +44,19 @@ def extraer_planificacion(file, sheet):
 
 def extraer_bts(file, sheet, add_puma=False, add_enap=False):
     df_bts = pd.read_excel(file, sheet_name=sheet, header=0)
-    df_bts.index = range(1, len(df_bts) + 1)
     df_bts = df_bts[["N° Referencia", "Nombre programa", "Nombre del BT", "Abrev."]]
     df_bts = df_bts.drop_duplicates(subset=["N° Referencia"], keep="first")
+    abreviaturas_duplicadas = df_bts["Abrev."].duplicated(keep=False)
+    if abreviaturas_duplicadas.any():
+        raise Exception("Abreviaturas duplicadas encontradas en la hoja \"Buques\".", df_bts[abreviaturas_duplicadas])
     if add_puma:
         puma_row = {'N° Referencia': np.nan, 'Nombre programa': 'Puma', 'Nombre del BT': 'Puma', 'Abrev.': 'Puma'}
         df_bts = pd.concat([df_bts, pd.DataFrame([puma_row])], ignore_index=True)
     if add_enap:
         enap_row = {'N° Referencia': np.nan, 'Nombre programa': 'Enap', 'Nombre del BT': 'Enap', 'Abrev.': 'Enap'}
         df_bts = pd.concat([df_bts, pd.DataFrame([enap_row])], ignore_index=True)
-    
+    df_bts.index = range(1, len(df_bts) + 1)
+
     return df_bts
 
 def extraer_descargas(df_planificacion, ignore_not_bts=False, df_bts=None):
