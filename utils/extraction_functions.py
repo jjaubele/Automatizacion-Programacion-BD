@@ -93,18 +93,18 @@ def extraer_programas(df_planificacion):
 
 def extraer_nueva_ficha(file, sheet, df_programas=None):
     df_nueva_ficha = pd.read_excel(file, sheet_name=sheet, header=3)
-    df_nueva_ficha = df_nueva_ficha[["N° Referencia", "Proveedor", "Inicio Ventana",
+    df_nueva_ficha = df_nueva_ficha[["Nombre del BT", "N° Referencia", "Proveedor", "Origen", "Inicio Ventana",
                                      "Fin Ventana", "Inicio Ventana Corta", "Fin Ventana Corta", 
-                                     "ETA", "MONTO ($/DIA)"]]
+                                     "ETA", "MONTO ($/DIA)", "Agencia de Naves", "Surveyor Primario"]]
     
     df_nueva_ficha.drop_duplicates(subset=["N° Referencia"], keep="first", inplace=True)
     if df_programas is not None:
         df_nueva_ficha = df_nueva_ficha[df_nueva_ficha["N° Referencia"].isin(df_programas["N° Referencia"])]
-    df_nueva_ficha["Inicio Ventana"] = pd.to_datetime(df_nueva_ficha["Inicio Ventana"], errors="coerce")
-    df_nueva_ficha["Fin Ventana"] = pd.to_datetime(df_nueva_ficha["Fin Ventana"], errors="coerce").apply(lambda dt: dt.replace(hour=23, minute=59, second=59) if pd.notna(dt) else dt)
-    df_nueva_ficha["Inicio Ventana Corta"] = pd.to_datetime(df_nueva_ficha["Inicio Ventana Corta"], errors="coerce")
-    df_nueva_ficha["Fin Ventana Corta"] = pd.to_datetime(df_nueva_ficha["Fin Ventana Corta"], errors="coerce").apply(lambda dt: dt.replace(hour=23, minute=59, second=59) if pd.notna(dt) else dt)
-    df_nueva_ficha["ETA"] = pd.to_datetime(df_nueva_ficha["ETA"], errors="coerce")
+    df_nueva_ficha["Inicio Ventana"] = pd.to_datetime(df_nueva_ficha["Inicio Ventana"], format="%d-%m-%Y", errors="coerce")
+    df_nueva_ficha["Fin Ventana"] = pd.to_datetime(df_nueva_ficha["Fin Ventana"], format="%d-%m-%Y", errors="coerce").apply(lambda dt: dt.replace(hour=23, minute=59, second=59) if pd.notna(dt) else dt)
+    df_nueva_ficha["Inicio Ventana Corta"] = pd.to_datetime(df_nueva_ficha["Inicio Ventana Corta"], format="%d-%m-%Y", errors="coerce")
+    df_nueva_ficha["Fin Ventana Corta"] = pd.to_datetime(df_nueva_ficha["Fin Ventana Corta"], format="%d-%m-%Y", errors="coerce").apply(lambda dt: dt.replace(hour=23, minute=59, second=59) if pd.notna(dt) else dt)
+    df_nueva_ficha["ETA"] = pd.to_datetime(df_nueva_ficha["ETA"], format="%d-%m-%Y %H:%M:%S", errors="coerce")
     df_nueva_ficha["MONTO ($/DIA)"] = pd.to_numeric(df_nueva_ficha["MONTO ($/DIA)"], errors="coerce")
     
     return df_nueva_ficha

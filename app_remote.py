@@ -58,7 +58,9 @@ if st.button("Procesar Archivos"):
             df_programas_completo["Fin Ventana"] = df_programas_completo["Fin Ventana Corta"].combine_first(df_programas_completo["Fin Ventana"])
             df_programas_completo["ETA"] = df_programas_completo["ETA"].combine_first(df_programas_completo["ETA Programa"])
             # Comentar si no se desea llenar montos faltantes con el promedio
-            df_programas_completo["MONTO ($/DIA)"] = df_programas_completo["MONTO ($/DIA)"].fillna(df_programas_completo["MONTO ($/DIA)"].mean()).astype(int)
+            # df_programas_completo["MONTO ($/DIA)"] = df_programas_completo["MONTO ($/DIA)"].fillna(df_programas_completo["MONTO ($/DIA)"].mean()).astype(int)
+            # Comentar si no se desea llenar montos faltantes con 35.000
+            df_programas_completo["MONTO ($/DIA)"] = df_programas_completo["MONTO ($/DIA)"].fillna(35000).astype(int)
             df_programas_completo = df_programas_completo.drop(columns=["Inicio Ventana Corta", "Fin Ventana Corta", "ETA Programa"])
 
             if PATH_REPORTE_TANKERS:
@@ -68,8 +70,13 @@ if st.button("Procesar Archivos"):
                 df_programas_completo["ETA"] = df_programas_completo["ETA Reporte Tankers"].combine_first(df_programas_completo["ETA"])
                 df_programas_completo = df_programas_completo.drop(columns=["Inicio Ventana Reporte Tankers", "Fin Ventana Reporte Tankers", "ETA Reporte Tankers"])
 
+            df_descargas_descartadas = df_descargas_agrupadas[~df_descargas_agrupadas["N° Referencia"].isin(df_programas_completo["N° Referencia"])]
+
             df_descargas_por_programa = df_descargas_agrupadas.merge(df_programas_completo, on="N° Referencia", how="right")
             df_descargas_por_programa = df_descargas_por_programa[df_descargas_por_programa["Producto"].notna()]
+            df_descargas_por_programa["Nombre del BT_x"] = df_descargas_por_programa["Nombre del BT_x"].combine_first(df_descargas_por_programa["Nombre del BT_y"])
+            df_descargas_por_programa.rename(columns={"Nombre del BT_x": "Nombre del BT"}, inplace=True)
+            df_descargas_por_programa = df_descargas_por_programa.drop(columns=["Nombre del BT_y"])
             df_descargas_por_programa["ETA"] = df_descargas_por_programa["ETA"][[True if descarga == 1 else False for descarga in df_descargas_por_programa["N° Descarga"]]]
             df_descargas_por_programa = rellenar_etas(df_descargas_por_programa, matriz_de_tiempos)
             df_estimacion = estimar_demurrage(df_descargas_por_programa)
@@ -117,6 +124,8 @@ if st.button("Procesar Archivos"):
                     )
                 os.remove(FILE_NAMES["lista_vertical"])
 
+            with st.expander("Descargas descartadas para estimación (ETAs previos al inicio de la programación)."):
+                st.dataframe(df_descargas_descartadas)
 
             with st.expander("Base de Datos Estimación Demurrage (Formato Completo)"):
                 st.dataframe(df_estimacion)
