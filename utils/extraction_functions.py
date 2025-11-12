@@ -95,8 +95,9 @@ def extraer_nueva_ficha(file, sheet, df_programas=None):
     df_nueva_ficha = pd.read_excel(file, sheet_name=sheet, header=3)
     df_nueva_ficha = df_nueva_ficha[["Nombre del BT", "N° Referencia", "Proveedor", "Origen", "Inicio Ventana",
                                      "Fin Ventana", "Inicio Ventana Corta", "Fin Ventana Corta", 
-                                     "ETA", "MONTO ($/DIA)", "Agencia de Naves", "Surveyor Primario"]]
-    
+                                     "ETA", "MONTO ($/DIA)", "Agencia de Naves", "Surveyor Primario",
+                                     "Surveyor Secundario"]]
+    df_nueva_ficha.dropna(subset=["N° Referencia"], inplace=True)
     df_nueva_ficha.drop_duplicates(subset=["N° Referencia"], keep="first", inplace=True)
     if df_programas is not None:
         df_nueva_ficha = df_nueva_ficha[df_nueva_ficha["N° Referencia"].isin(df_programas["N° Referencia"])]
