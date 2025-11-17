@@ -7,6 +7,7 @@ HORAS_LAYTIME = 132
 MESES = {1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 
          5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto", 
          9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"}
+MESES_REVERSE = {v: k for k, v in MESES.items()}
 
 def agrupar_descargas(df_descargas_completo):
     df = df_descargas_completo.copy()
@@ -96,7 +97,7 @@ def rellenar_etas(df_descargas_agrupadas, matriz_de_tiempos):
 
     return df_descargas_agrupadas
 
-def asignar_año_mes(df_descargas_completo, df_BD):
+def asignar_año_mes(df_descargas_completo, df_BD, mes_string=True):
     df = df_descargas_completo.copy()
     df["Mes_Año"] = df["Fecha"].dt.to_period("M")
     vol_por_mes = df.groupby(["N° Referencia", "Mes_Año"], as_index=False)["Volumen"].sum()
@@ -106,7 +107,8 @@ def asignar_año_mes(df_descargas_completo, df_BD):
     df_BD["Mes"] = df_BD["Mes_Año"].dt.month
     df_BD["Año"] = df_BD["Mes_Año"].dt.year
     df_BD.drop(columns=["Mes_Año"], inplace=True)
-    df_BD["Mes"] = df_BD["Mes"].map(MESES)
+    if mes_string:
+       df_BD["Mes"] = df_BD["Mes"].map(MESES)
     
     return df_BD
 
