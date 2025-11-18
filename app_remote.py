@@ -5,6 +5,10 @@ from utils.aggregation_functions import rellenar_etas, agrupar_descargas, format
 from utils.extraction_functions import (extraer_bts, extraer_descargas, extraer_tiempos_de_viaje,
                    extraer_planificacion, extraer_programas, extraer_nueva_ficha,
                    extraer_productos_plantas, extraer_reporte_tankers)
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
+from utils.loading_functions import (create_programacion, create_descargas,
+                                     create_estimaciones_programas, BD_URI)
 
 st.title("Automatización Programación Descargas")
 
@@ -77,6 +81,7 @@ if st.button("Procesar Archivos"):
             df_descargas_por_programa["Nombre del BT_x"] = df_descargas_por_programa["Nombre del BT_x"].combine_first(df_descargas_por_programa["Nombre del BT_y"])
             df_descargas_por_programa.rename(columns={"Nombre del BT_x": "Nombre del BT"}, inplace=True)
             df_descargas_por_programa = df_descargas_por_programa.drop(columns=["Nombre del BT_y"])
+            df_descargas_por_programa.index = range(0, len(df_descargas_por_programa))
             df_descargas_por_programa["ETA"] = df_descargas_por_programa["ETA"][[True if descarga == 1 else False for descarga in df_descargas_por_programa["N° Descarga"]]]
             df_descargas_por_programa = rellenar_etas(df_descargas_por_programa, matriz_de_tiempos)
             df_estimacion = estimar_demurrage(df_descargas_por_programa)
@@ -148,7 +153,22 @@ if st.button("Procesar Archivos"):
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
                 os.remove(FILE_NAMES["bd"])
-                
+
+            st.write("Todo bien 1")
+            engine = create_engine(BD_URI)
+            st.write("Todo bien 2")
+            with Session(engine) as session:
+                st.write("Todo bien 3")
+                programacion = create_programacion(session, FECHA_PROGRAMACION)
+                st.write("Todo bien 4")
+                descargas_descartadas = create_descargas(session, df_descargas_descartadas, FECHA_PROGRAMACION, estimacion=False)
+                df_descargas_con_estimacion = create_descargas(session, df_estimacion, FECHA_PROGRAMACION, estimacion=True)
+
+                df_estimacion_con_año_mes = df_estimacion.merge(df_BD[["CC", "Año", "Mes"]], left_on="N° Referencia", right_on="CC", how="left")
+                df_estimacion_programas_con_año_mes = df_estimacion_con_año_mes.drop_duplicates(subset=["N° Referencia"])
+                create_estimaciones_programas(session, df_estimacion_programas_con_año_mes)
+            st.success("Datos cargados exitosamente en la base de datos.")
+
         except Exception as e:
             if e.args[0] == "Abreviaturas duplicadas encontradas en la hoja \"Buques\".":
                 st.error(f"Error al procesar los archivos: {e.args[0]}")
