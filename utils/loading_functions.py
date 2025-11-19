@@ -49,16 +49,12 @@ def create_programacion(session, FECHA_PROGRAMACION):
         semana=get_week_of_month_int(FECHA_PROGRAMACION.year, FECHA_PROGRAMACION.month, FECHA_PROGRAMACION.day),
         )
     session.add(nueva_programacion)
-    session.commit()
 
     return nueva_programacion
 
-def create_descarga(session, row, FECHA_PROGRAMACION):
+def create_descarga(session, row, programacion):
     programa = session.execute(
         select(Programa).where(Programa.CC == row["N° Referencia"])
-    ).scalar_one()
-    programacion = session.execute(
-        select(Programacion).where(Programacion.fecha == FECHA_PROGRAMACION)
     ).scalar_one()
     planta = session.execute(
         select(Planta).where(Planta.nombre == row["Planta"])
@@ -73,7 +69,6 @@ def create_descarga(session, row, FECHA_PROGRAMACION):
         fecha_fin=row["Fecha fin"],
     )
     session.add(nueva_descarga)
-    session.commit()
 
     return nueva_descarga
 
@@ -89,7 +84,6 @@ def create_estimacion_descarga(session, row, nueva_descarga):
         shifting=row["Shifting"],
     )
     session.add(nueva_estimacion_descarga)
-    session.commit()
 
     return nueva_estimacion_descarga
 
@@ -105,14 +99,13 @@ def create_estimacion_programa(session, row):
         año=row["Año"],
     )
     session.add(nueva_estimacion_programa)
-    session.commit()
 
     return nueva_estimacion_programa
 
-def create_descargas(session, df, FECHA_PROGRAMACION, estimacion=True):
+def create_descargas(session, df, programacion, estimacion=True):
     descargas = []
     for _, row in df.iterrows():
-        nueva_descarga = create_descarga(session, row, FECHA_PROGRAMACION)
+        nueva_descarga = create_descarga(session, row, programacion)
         descargas.append(nueva_descarga)
         if estimacion:
             create_estimacion_descarga(session, row, nueva_descarga)

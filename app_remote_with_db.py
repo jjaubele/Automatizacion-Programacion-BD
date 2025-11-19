@@ -5,6 +5,10 @@ from utils.aggregation_functions import rellenar_etas, agrupar_descargas, format
 from utils.extraction_functions import (extraer_bts, extraer_descargas, extraer_tiempos_de_viaje,
                    extraer_planificacion, extraer_programas, extraer_nueva_ficha,
                    extraer_productos_plantas, extraer_reporte_tankers)
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
+from utils.loading_functions import (create_programacion, create_descargas,
+                                     create_estimaciones_programas, BD_URI)
 
 st.title("Automatización Programación Descargas")
 
@@ -149,6 +153,21 @@ if st.button("Procesar Archivos"):
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
                 os.remove(FILE_NAMES["bd"])
+
+            st.write("Todo bien 1")
+            engine = create_engine(BD_URI)
+            st.write("Todo bien 2")
+            with Session(engine) as session:
+                st.write("Todo bien 3")
+                programacion = create_programacion(session, FECHA_PROGRAMACION)
+                st.write("Todo bien 4")
+                descargas_descartadas = create_descargas(session, df_descargas_descartadas, FECHA_PROGRAMACION, estimacion=False)
+                df_descargas_con_estimacion = create_descargas(session, df_estimacion, FECHA_PROGRAMACION, estimacion=True)
+
+                df_estimacion_con_año_mes = df_estimacion.merge(df_BD[["CC", "Año", "Mes"]], left_on="N° Referencia", right_on="CC", how="left")
+                df_estimacion_programas_con_año_mes = df_estimacion_con_año_mes.drop_duplicates(subset=["N° Referencia"])
+                create_estimaciones_programas(session, df_estimacion_programas_con_año_mes)
+            st.success("Datos cargados exitosamente en la base de datos.")
 
         except Exception as e:
             if e.args[0] == "Abreviaturas duplicadas encontradas en la hoja \"Buques\".":
