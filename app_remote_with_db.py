@@ -7,8 +7,8 @@ from utils.extraction_functions import (extraer_bts, extraer_descargas, extraer_
                    extraer_productos_plantas, extraer_reporte_tankers)
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from utils.loading_functions import (create_programacion, create_descargas,
-                                     create_estimaciones_programas, BD_URI)
+from utils.loading_functions import (update_programas, get_programacion, create_programacion, 
+                                     create_descargas, update_estimaciones_programas, BD_URI)
 
 st.title("Automatización Programación Descargas")
 
@@ -96,78 +96,21 @@ if st.button("Procesar Archivos"):
             df_descargas_agrupadas.to_excel(FILE_NAMES["descargas"], index=False)
             df_descargas_agrupadas_puma_enap.to_excel(FILE_NAMES["descargas_puma_enap"], index=False)
 
-            with st.expander("Descargas Agrupadas por Programa"):
-                st.dataframe(df_descargas_agrupadas)
-                with open(FILE_NAMES["descargas"], "rb") as file:
-                    btn = st.download_button(
-                        label="Descargar Descargas Agrupadas",
-                        data=file,
-                        file_name=FILE_NAMES["descargas"],
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
-                os.remove(FILE_NAMES["descargas"])
-
-            with st.expander("Descargas Agrupadas por Programa (Puma y Enap incluidos)"):
-                st.dataframe(df_descargas_agrupadas_puma_enap)
-                with open(FILE_NAMES["descargas_puma_enap"], "rb") as file:
-                    btn = st.download_button(
-                        label="Descargar Descargas Agrupadas con Puma y Enap",
-                        data=file,
-                        file_name=FILE_NAMES["descargas_puma_enap"],
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
-                os.remove(FILE_NAMES["descargas_puma_enap"])
-
-            with st.expander("Formato Lista Vertical (formato solicitado por Nicolás)"):
-                st.dataframe(df_lista_vertical)
-                with open(FILE_NAMES["lista_vertical"], "rb") as file:
-                    btn = st.download_button(
-                        label="Descargar Lista Vertical",
-                        data=file,
-                        file_name=f"Lista Vertical {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
-                os.remove(FILE_NAMES["lista_vertical"])
-
-            with st.expander("Descargas descartadas para estimación (ETAs previos al inicio de la programación)."):
-                st.dataframe(df_descargas_descartadas)
-
-            with st.expander("Base de Datos Estimación Demurrage (Formato Completo)"):
-                st.dataframe(df_estimacion)
-                with open(FILE_NAMES["estimacion"], "rb") as file:
-                    btn = st.download_button(
-                        label="Descargar Estimación Completa",
-                        data=file,
-                        file_name=FILE_NAMES["estimacion"],
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
-                os.remove(FILE_NAMES["estimacion"])
-
-            with st.expander("Base de Datos Estimación Demurrage (formato Base de Datos)"):
-                st.dataframe(df_BD)
-                with open(FILE_NAMES["bd"], "rb") as file:
-                    btn = st.download_button(
-                        label="Descargar Base de Datos",
-                        data=file,
-                        file_name=FILE_NAMES["bd"],
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
-                os.remove(FILE_NAMES["bd"])
-
-            st.write("Todo bien 1")
             engine = create_engine(BD_URI)
-            st.write("Todo bien 2")
             with Session(engine) as session:
-                st.write("Todo bien 3")
-                programacion = create_programacion(session, FECHA_PROGRAMACION)
-                st.write("Todo bien 4")
-                descargas_descartadas = create_descargas(session, df_descargas_descartadas, FECHA_PROGRAMACION, estimacion=False)
-                df_descargas_con_estimacion = create_descargas(session, df_estimacion, FECHA_PROGRAMACION, estimacion=True)
+                programas = update_programas(session, df_programas_completo) # Se actualizan los programas con la nueva ficha + reporte tankers
+                programacion = get_programacion(session, FECHA_PROGRAMACION)
+                if programacion:
+                    session.delete(programacion)
+                    session.commit()
+                programacion = create_programacion(session, FECHA_PROGRAMACION) # Se crea la nueva programación
+                descargas_descartadas = create_descargas(session, df_descargas_descartadas, programacion, estimacion=False)
+                df_descargas_con_estimacion = create_descargas(session, df_estimacion, programacion, estimacion=True)
 
                 df_estimacion_con_año_mes = df_estimacion.merge(df_BD[["CC", "Año", "Mes"]], left_on="N° Referencia", right_on="CC", how="left")
                 df_estimacion_programas_con_año_mes = df_estimacion_con_año_mes.drop_duplicates(subset=["N° Referencia"])
-                create_estimaciones_programas(session, df_estimacion_programas_con_año_mes)
-            st.success("Datos cargados exitosamente en la base de datos.")
+                update_estimaciones_programas(session, df_estimacion_programas_con_año_mes)
+                st.success("Datos cargados exitosamente en la base de datos.")
 
         except Exception as e:
             if e.args[0] == "Abreviaturas duplicadas encontradas en la hoja \"Buques\".":
