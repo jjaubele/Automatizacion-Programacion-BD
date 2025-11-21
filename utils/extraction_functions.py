@@ -44,16 +44,19 @@ def extraer_planificacion(file, sheet):
 
 def extraer_bts(file, sheet, add_puma=False, add_enap=False):
     df_bts = pd.read_excel(file, sheet_name=sheet, header=0)
-    df_bts.index = range(1, len(df_bts) + 1)
     df_bts = df_bts[["N° Referencia", "Nombre programa", "Nombre del BT", "Abrev."]]
     df_bts = df_bts.drop_duplicates(subset=["N° Referencia"], keep="first")
+    abreviaturas_duplicadas = df_bts["Abrev."].duplicated(keep=False)
+    if abreviaturas_duplicadas.any():
+        raise Exception("Abreviaturas duplicadas encontradas en la hoja \"Buques\".", df_bts[abreviaturas_duplicadas])
     if add_puma:
         puma_row = {'N° Referencia': np.nan, 'Nombre programa': 'Puma', 'Nombre del BT': 'Puma', 'Abrev.': 'Puma'}
         df_bts = pd.concat([df_bts, pd.DataFrame([puma_row])], ignore_index=True)
     if add_enap:
         enap_row = {'N° Referencia': np.nan, 'Nombre programa': 'Enap', 'Nombre del BT': 'Enap', 'Abrev.': 'Enap'}
         df_bts = pd.concat([df_bts, pd.DataFrame([enap_row])], ignore_index=True)
-    
+    df_bts.index = range(1, len(df_bts) + 1)
+
     return df_bts
 
 def extraer_descargas(df_planificacion, ignore_not_bts=False, df_bts=None):
@@ -90,18 +93,19 @@ def extraer_programas(df_planificacion):
 
 def extraer_nueva_ficha(file, sheet, df_programas=None):
     df_nueva_ficha = pd.read_excel(file, sheet_name=sheet, header=3)
-    df_nueva_ficha = df_nueva_ficha[["N° Referencia", "Proveedor", "Inicio Ventana",
+    df_nueva_ficha = df_nueva_ficha[["Nombre del BT", "N° Referencia", "Proveedor", "Origen", "Inicio Ventana",
                                      "Fin Ventana", "Inicio Ventana Corta", "Fin Ventana Corta", 
-                                     "ETA", "MONTO ($/DIA)"]]
-    
+                                     "ETA", "MONTO ($/DIA)", "Agencia de Naves", "Surveyor Primario",
+                                     "Surveyor Secundario"]]
+    df_nueva_ficha.dropna(subset=["N° Referencia"], inplace=True)
     df_nueva_ficha.drop_duplicates(subset=["N° Referencia"], keep="first", inplace=True)
     if df_programas is not None:
         df_nueva_ficha = df_nueva_ficha[df_nueva_ficha["N° Referencia"].isin(df_programas["N° Referencia"])]
-    df_nueva_ficha["Inicio Ventana"] = pd.to_datetime(df_nueva_ficha["Inicio Ventana"], errors="coerce")
-    df_nueva_ficha["Fin Ventana"] = pd.to_datetime(df_nueva_ficha["Fin Ventana"], errors="coerce").apply(lambda dt: dt.replace(hour=23, minute=59, second=59) if pd.notna(dt) else dt)
-    df_nueva_ficha["Inicio Ventana Corta"] = pd.to_datetime(df_nueva_ficha["Inicio Ventana Corta"], errors="coerce")
-    df_nueva_ficha["Fin Ventana Corta"] = pd.to_datetime(df_nueva_ficha["Fin Ventana Corta"], errors="coerce").apply(lambda dt: dt.replace(hour=23, minute=59, second=59) if pd.notna(dt) else dt)
-    df_nueva_ficha["ETA"] = pd.to_datetime(df_nueva_ficha["ETA"], errors="coerce")
+    df_nueva_ficha["Inicio Ventana"] = pd.to_datetime(df_nueva_ficha["Inicio Ventana"], format="%d-%m-%Y", errors="coerce")
+    df_nueva_ficha["Fin Ventana"] = pd.to_datetime(df_nueva_ficha["Fin Ventana"], format="%d-%m-%Y", errors="coerce").apply(lambda dt: dt.replace(hour=23, minute=59, second=59) if pd.notna(dt) else dt)
+    df_nueva_ficha["Inicio Ventana Corta"] = pd.to_datetime(df_nueva_ficha["Inicio Ventana Corta"], format="%d-%m-%Y", errors="coerce")
+    df_nueva_ficha["Fin Ventana Corta"] = pd.to_datetime(df_nueva_ficha["Fin Ventana Corta"], format="%d-%m-%Y", errors="coerce").apply(lambda dt: dt.replace(hour=23, minute=59, second=59) if pd.notna(dt) else dt)
+    df_nueva_ficha["ETA"] = pd.to_datetime(df_nueva_ficha["ETA"], format="%d-%m-%Y %H:%M:%S", errors="coerce")
     df_nueva_ficha["MONTO ($/DIA)"] = pd.to_numeric(df_nueva_ficha["MONTO ($/DIA)"], errors="coerce")
     
     return df_nueva_ficha

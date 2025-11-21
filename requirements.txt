@@ -4,3 +4,6 @@ streamlit
 openpyxl
 pdfplumber
 pdfminer.six
+sqlalchemy
+sqlalchemy-utils
+psycopg2-binary

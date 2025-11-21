@@ -7,6 +7,7 @@ HORAS_LAYTIME = 132
 MESES = {1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 
          5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto", 
          9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"}
+MESES_REVERSE = {v: k for k, v in MESES.items()}
 
 def agrupar_descargas(df_descargas_completo):
     df = df_descargas_completo.copy()
@@ -96,7 +97,7 @@ def rellenar_etas(df_descargas_agrupadas, matriz_de_tiempos):
 
     return df_descargas_agrupadas
 
-def asignar_año_mes(df_descargas_completo, df_BD):
+def asignar_año_mes(df_descargas_completo, df_BD, mes_string=True):
     df = df_descargas_completo.copy()
     df["Mes_Año"] = df["Fecha"].dt.to_period("M")
     vol_por_mes = df.groupby(["N° Referencia", "Mes_Año"], as_index=False)["Volumen"].sum()
@@ -106,7 +107,8 @@ def asignar_año_mes(df_descargas_completo, df_BD):
     df_BD["Mes"] = df_BD["Mes_Año"].dt.month
     df_BD["Año"] = df_BD["Mes_Año"].dt.year
     df_BD.drop(columns=["Mes_Año"], inplace=True)
-    df_BD["Mes"] = df_BD["Mes"].map(MESES)
+    if mes_string:
+       df_BD["Mes"] = df_BD["Mes"].map(MESES)
     
     return df_BD
 
@@ -141,12 +143,12 @@ def estimar_demurrage(df_descargas_por_programa):
     df["Arribo"] = Arribo
     df["Arribo"] = df.groupby("Nombre programa")["Arribo"].transform('first')
     df['Inicio Laytime'] = inicio_laytime
-    df["Laytime descarga (Horas)"] = (df["Fecha fin"] - df["Inicio Laytime"]).dt.total_seconds() / 3600
-    df["Laytime programa (Horas)"] = df.groupby("Nombre programa")["Laytime descarga (Horas)"].transform('sum')
+    df["Tiempo descarga (Horas)"] = (df["Fecha fin"] - df["Inicio Laytime"]).dt.total_seconds() / 3600
+    df["Tiempo programa (Horas)"] = df.groupby("Nombre programa")["Tiempo descarga (Horas)"].transform('sum')
 
     df["Laytime pactado (Horas)"] = [HORAS_LAYTIME] * len(df)
-    df["Demurrage programa (Horas)"] = df.apply(lambda row: max(0, row["Laytime programa (Horas)"] - row["Laytime pactado (Horas)"]), axis=1)
-    df["Demurrage descarga (Horas)"] = df.apply(lambda row: row["Demurrage programa (Horas)"] * row["Laytime descarga (Horas)"] / row["Laytime programa (Horas)"], axis=1)
+    df["Demurrage programa (Horas)"] = df.apply(lambda row: max(0, row["Tiempo programa (Horas)"] - row["Laytime pactado (Horas)"]), axis=1)
+    df["Demurrage descarga (Horas)"] = df.apply(lambda row: row["Demurrage programa (Horas)"] * row["Tiempo descarga (Horas)"] / row["Tiempo programa (Horas)"], axis=1)
     df["Estimación demurrage"] = np.ceil(df["Demurrage descarga (Horas)"] * (df["MONTO ($/DIA)"] / 24))
     df["Demurrage unitario"] = df.apply(lambda row: row["Estimación demurrage"] / row["Volumen total"] if row["Volumen total"] > 0 else 0, axis=1)
 

@@ -23,3 +23,9 @@ def get_week_of_month(year, month, day):
     for week_number, week in enumerate(month_calendar, start=1):
         if day in week:
             return "Semana " + str(week_number)
+        
+def get_week_of_month_int(year, month, day):
+    month_calendar = calendar.monthcalendar(year, month)
+    for week_number, week in enumerate(month_calendar, start=1):
+        if day in week:
+            return week_number
