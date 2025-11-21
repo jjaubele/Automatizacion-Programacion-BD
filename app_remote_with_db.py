@@ -18,16 +18,6 @@ PATH_PROGRAMACION = st.file_uploader("Sube la Programación de Descargas", type=
 PATH_NUEVA_FICHA = st.file_uploader("Sube la Nueva Ficha", type=["xlsx", "xls"])
 PATH_REPORTE_TANKERS = st.file_uploader("Sube el Reporte de Tankers (opcional)", type=["pdf"])
 
-# Selección de fecha
-FECHA_PROGRAMACION = pd.to_datetime(st.date_input("Selecciona la fecha de programación"))
-FILE_NAMES = {
-    "estimacion": f"Estimación Demurrage Completo {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx",
-    "bd": f"Base de Datos Estimación Semanal {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx",
-    "lista_vertical": f"Lista Vertical {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx",
-    "descargas": f"Descargas Programación {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx",
-    "descargas_puma_enap": f"Descargas Programación con Puma y Enap {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx"
-}
-
 if st.button("Procesar Archivos"):
     if not (PATH_DISTANCIAS and PATH_PROGRAMACION and PATH_NUEVA_FICHA):
         st.error("Faltan uno o más archivos por subir.")
@@ -85,6 +75,15 @@ if st.button("Procesar Archivos"):
             df_descargas_por_programa["ETA"] = df_descargas_por_programa["ETA"][[True if descarga == 1 else False for descarga in df_descargas_por_programa["N° Descarga"]]]
             df_descargas_por_programa = rellenar_etas(df_descargas_por_programa, matriz_de_tiempos)
             df_estimacion = estimar_demurrage(df_descargas_por_programa)
+
+            FECHA_PROGRAMACION = pd.to_datetime(df_planificacion.loc[13, "B"], format="%d-%m-%Y", errors="coerce")
+            FILE_NAMES = {
+                "estimacion": f"Estimación Demurrage Completo {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx",
+                "bd": f"Base de Datos Estimación Semanal {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx",
+                "lista_vertical": f"Lista Vertical {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx",
+                "descargas": f"Descargas Programación {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx",
+                "descargas_puma_enap": f"Descargas Programación con Puma y Enap {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx"
+            }
 
             df_BD = formato_BD(df_estimacion, df_descargas_completo, FECHA_PROGRAMACION)
             df_lista_vertical = formato_lista_vertical(df_descargas_agrupadas_puma_enap)
