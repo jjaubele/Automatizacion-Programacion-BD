@@ -14,7 +14,9 @@ from modelo import (Programacion, Descarga, Programa, Planta,
 USUARIO = "postgres"
 PASSWORD = "qwerty"
 BD = "Estimacion_Descargas"
-BD_URI = f"postgresql+psycopg2://{USUARIO}:{PASSWORD}@localhost:5432/{BD}"
+HOST = "localhost"
+PORT = "5432"
+BD_URI = f"postgresql+psycopg2://{USUARIO}:{PASSWORD}@{HOST}:{PORT}/{BD}"
 
 def nueva_ficha_psql_format(df):
     df_formateado = pd.DataFrame({

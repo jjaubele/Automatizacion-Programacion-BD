@@ -77,23 +77,8 @@ if st.button("Procesar Archivos"):
             df_estimacion = estimar_demurrage(df_descargas_por_programa)
 
             FECHA_PROGRAMACION = pd.to_datetime(df_planificacion.loc[13, "B"], format="%d-%m-%Y", errors="coerce")
-            FILE_NAMES = {
-                "estimacion": f"Estimación Demurrage Completo {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx",
-                "bd": f"Base de Datos Estimación Semanal {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx",
-                "lista_vertical": f"Lista Vertical {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx",
-                "descargas": f"Descargas Programación {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx",
-                "descargas_puma_enap": f"Descargas Programación con Puma y Enap {FECHA_PROGRAMACION.strftime('%d-%m-%Y')}.xlsx"
-            }
-
             df_BD = formato_BD(df_estimacion, df_descargas_completo, FECHA_PROGRAMACION)
             df_lista_vertical = formato_lista_vertical(df_descargas_agrupadas_puma_enap)
-
-
-            df_estimacion.to_excel(FILE_NAMES["estimacion"], index=False)
-            df_BD.to_excel(FILE_NAMES["bd"], index=False)
-            df_lista_vertical.to_excel(FILE_NAMES["lista_vertical"], index=False)
-            df_descargas_agrupadas.to_excel(FILE_NAMES["descargas"], index=False)
-            df_descargas_agrupadas_puma_enap.to_excel(FILE_NAMES["descargas_puma_enap"], index=False)
 
             engine = create_engine(BD_URI)
             with Session(engine) as session:
