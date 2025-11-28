@@ -9,13 +9,12 @@ from utils.extraction_functions import (extraer_bts, extraer_descargas, extraer_
 st.title("Automatización Programación Descargas")
 
 # Subir archivos
-PATH_DISTANCIAS = "Distancias entre puertos.xlsx"
 PATH_PROGRAMACION = st.file_uploader("Sube la Programación de Descargas", type=["xlsx", "xls"])
 PATH_NUEVA_FICHA = st.file_uploader("Sube la Nueva Ficha", type=["xlsx", "xls"])
 PATH_REPORTE_TANKERS = st.file_uploader("Sube el Reporte de Tankers (opcional)", type=["pdf"])
 
 if st.button("Procesar Archivos"):
-    if not (PATH_DISTANCIAS and PATH_PROGRAMACION and PATH_NUEVA_FICHA):
+    if not (PATH_PROGRAMACION and PATH_NUEVA_FICHA):
         st.error("Faltan uno o más archivos por subir.")
     else:
         try:

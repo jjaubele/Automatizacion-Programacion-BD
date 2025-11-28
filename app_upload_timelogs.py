@@ -1,0 +1,36 @@
+import pandas as pd
+import streamlit as st
+from pathlib import Path
+from utils.extraction_functions import (extraer_timelog, timelog_to_db_row)
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
+from utils.loading_functions import (create_timelog, get_timelog, update_timelog, BD_URI)
+
+st.title("Carga de Timelogs a la Base de Datos")
+
+PATHS_TIMELOGS = st.file_uploader("Sube los Timelogs", type=["xlsm"], accept_multiple_files=True)
+
+if st.button("Subir Archivo"):
+    if not PATHS_TIMELOGS:
+        st.warning("Por favor, sube al menos un archivo de Timelog.")
+    else:
+        try:
+            engine = create_engine(BD_URI)
+            with Session(engine) as session:
+                for PATH_TIMELOG in PATHS_TIMELOGS:
+                    try:
+                        timelog_name = Path(PATH_TIMELOG.name).stem
+                        df_timelog = extraer_timelog(PATH_TIMELOG, sheet="BITACORA (1)")
+                        db_row = timelog_to_db_row(df_timelog, timelog_name)
+                        timelog = get_timelog(session, db_row["nombre"])
+                        if timelog:
+                            timelog = update_timelog(session, db_row, timelog)
+                            st.success(f"Timelog {timelog_name} actualizado correctamente.")
+                        else:
+                            timelog = create_timelog(session, db_row)
+                            st.success(f"Timelog {timelog_name} creado correctamente.")
+                    except Exception as e:
+                        st.error(f"Error al procesar el archivo {PATH_TIMELOG.name}: {e}")
+                session.commit()
+        except Exception as e:
+            st.error(f"Ocurrió un error al cargar los Timelogs: {e}")

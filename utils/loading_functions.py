@@ -5,11 +5,11 @@ import pandas as pd
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(BASE_DIR)
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from utils.utils import get_week_of_month_int
 from utils.aggregation_functions import MESES_REVERSE
 from modelo import (Programacion, Descarga, Programa, Planta,
-                    EstimacionPrograma, EstimacionDescarga)
+                    EstimacionPrograma, EstimacionDescarga, Timelog)
 
 USUARIO = "postgres"
 PASSWORD = "qwerty"
@@ -215,3 +215,69 @@ def update_estimaciones_programas(session, df):
             estimaciones_programas.append(actualizado_estimacion_programa)
     session.commit()
     return estimaciones_programas
+
+### Timelog ###
+
+def get_timelog(session, timelog_name):
+    timelog = session.execute(
+        select(Timelog).where(Timelog.nombre == timelog_name)
+    ).scalar_one_or_none()
+    return timelog
+
+def update_timelog(session, row, timelog):
+    programa = session.execute(
+        select(Programa).where(Programa.CC == row["CC"])
+    ).scalar_one()
+    planta = session.execute(
+        select(Planta).where(func.upper(Planta.alias) == row["puerto"].upper())
+    ).scalar_one()
+    if not planta:
+        raise ValueError(f"No se encontró la planta con alias {row['puerto']} en la base de datos.")
+    elif not programa:
+        raise ValueError(f"No se encontró el programa con CC {row['CC']} en la base de datos.")
+    else:
+        timelog.programa = programa
+        timelog.planta = planta
+        timelog.fecha=row["fecha"]
+        timelog.arribo_inicio_amarre=row["arribo_inicio_amarre"]
+        timelog.inicio_amarre_fin_amarre=row["inicio_amarre_fin_amarre"]
+        timelog.fin_amarre_inicio_conexion=row["fin_amarre_inicio_conexion"]
+        timelog.inicio_conexion_fin_conexion=row["inicio_conexion_fin_conexion"]
+        timelog.fin_conexion_inicio_descarga=row["fin_conexion_inicio_descarga"]
+        timelog.inicio_descarga_fin_descarga=row["inicio_descarga_fin_descarga"]
+        timelog.fin_descarga_despachado=row["fin_descarga_despachado"]
+        timelog.tiempo_total=row["tiempo_total"]
+
+    session.add(timelog)
+
+    return timelog
+
+def create_timelog(session, row):
+    programa = session.execute(
+        select(Programa).where(Programa.CC == row["CC"])
+    ).scalar_one()
+    planta = session.execute(
+        select(Planta).where(func.upper(Planta.alias) == row["puerto"].upper())
+    ).scalar_one()
+    if not planta:
+        raise ValueError(f"No se encontró la planta con alias {row['puerto']} en la base de datos.")
+    elif not programa:
+        raise ValueError(f"No se encontró el programa con CC {row['CC']} en la base de datos.")
+    else:
+        nuevo_timelog = Timelog(
+            programa=programa,
+            planta=planta,
+            nombre=row["nombre"],
+            fecha=row["fecha"],
+            arribo_inicio_amarre=row["arribo_inicio_amarre"],
+            inicio_amarre_fin_amarre=row["inicio_amarre_fin_amarre"],
+            fin_amarre_inicio_conexion=row["fin_amarre_inicio_conexion"],
+            inicio_conexion_fin_conexion=row["inicio_conexion_fin_conexion"],
+            fin_conexion_inicio_descarga=row["fin_conexion_inicio_descarga"],
+            inicio_descarga_fin_descarga=row["inicio_descarga_fin_descarga"],
+            fin_descarga_despachado=row["fin_descarga_despachado"],
+            tiempo_total=row["tiempo_total"],
+        )
+        session.add(nuevo_timelog)
+
+    return nuevo_timelog

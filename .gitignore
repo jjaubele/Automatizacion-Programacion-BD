@@ -13,3 +13,6 @@ __pycache__/
 # Ignorar archivos de entorno virtual
 venv/
 *.env
+
+# Ignorar notebook de pruebas de consultas
+Consultas_db.ipynb

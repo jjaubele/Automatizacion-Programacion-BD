@@ -32,7 +32,7 @@ def extraer_productos_plantas():
                                     np.nan, "DA", np.nan, "AQ", np.nan, np.nan, np.nan, np.nan, "CK",
                                     np.nan, np.nan, np.nan, np.nan, "AW", np.nan, np.nan, np.nan, "CP",
                                     np.nan, "CU", np.nan, "AK", np.nan, np.nan, np.nan, np.nan, "CF"]
-    df_productos_plantas.dropna(subset=["Columna"], inplace=True)
+    df_productos_plantas = df_productos_plantas.dropna(subset=["Columna"])
     return df_productos_plantas
 
 def extraer_planificacion(file, sheet):
@@ -155,3 +155,31 @@ def extraer_reporte_tankers(file):
     df.drop(columns=['Hora'], inplace=True)
 
     return df
+
+def extraer_timelog(file, sheet):
+    df_timelog = pd.read_excel(file, sheet_name=sheet, header=None)
+    df_timelog.index = range(1, len(df_timelog) + 1)
+    df_timelog.columns = [int_to_excel_col(i) for i in range(1, len(df_timelog.columns) + 1)]
+    df_timelog = df_timelog.replace(['#REF!', '#DIV/0!', '#N/A'], None)
+    return df_timelog
+
+def timelog_to_db_row(df, timelog_name):
+    row = {
+        "CC": "CC " + df.loc[11, "H"] if pd.notna(df.loc[11, "H"]) else None,
+        "puerto": df.loc[5, "C"],
+        "nombre": timelog_name,
+        "fecha": pd.to_datetime(df.loc[6, "C"], format="%d-%m-%Y"),
+        "arribo_inicio_amarre": df.at[12, "Q"],
+        "inicio_amarre_fin_amarre": df.at[12, "R"],
+        "fin_amarre_inicio_conexion": df.at[12, "S"],
+        "inicio_conexion_fin_conexion": df.at[12, "T"],
+        "fin_conexion_inicio_descarga": df.at[12, "U"],
+        "inicio_descarga_fin_descarga": df.at[12, "V"],
+        "fin_descarga_despachado": df.at[12, "W"],
+        "tiempo_total": df.at[12, "X"],
+    }
+    # verificar que no haya nulos
+    for key, value in row.items():
+        if pd.isna(value):
+            raise Exception(f"El campo '{key}' no puede ser nulo.")
+    return row
