@@ -4,7 +4,7 @@ from pathlib import Path
 from utils.extraction_functions import (extraer_timelog, timelog_to_db_row)
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from utils.loading_functions import (create_timelog, get_timelog, update_timelog, BD_URI)
+from utils.loading_functions import (create_timelog, get_timelog, update_timelog)
 
 st.title("Carga de Timelogs a la Base de Datos")
 
@@ -15,7 +15,7 @@ if st.button("Subir Archivo"):
         st.warning("Por favor, sube al menos un archivo de Timelog.")
     else:
         try:
-            engine = create_engine(BD_URI)
+            engine = create_engine(st.secrets["connections"]["BD_URI"])
             with Session(engine) as session:
                 for PATH_TIMELOG in PATHS_TIMELOGS:
                     try:

@@ -8,7 +8,7 @@ from utils.extraction_functions import (extraer_bts, extraer_descargas, extraer_
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from utils.loading_functions import (update_programas, get_programacion, create_programacion, 
-                                     create_descargas, update_estimaciones_programas, BD_URI)
+                                     create_descargas, update_estimaciones_programas)
 
 st.title("Automatización Programación Descargas")
 
@@ -79,7 +79,7 @@ if st.button("Procesar Archivos"):
             df_BD = formato_BD(df_estimacion, df_descargas_completo, FECHA_PROGRAMACION)
             df_lista_vertical = formato_lista_vertical(df_descargas_agrupadas_puma_enap)
 
-            engine = create_engine(BD_URI)
+            engine = create_engine(st.secrets["connections"]["BD_URI"])
             with Session(engine) as session:
                 programas = update_programas(session, df_programas_completo) # Se actualizan los programas con la nueva ficha + reporte tankers
                 programacion = get_programacion(session, FECHA_PROGRAMACION)

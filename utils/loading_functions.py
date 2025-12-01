@@ -6,17 +6,11 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(BASE_DIR)
 
 from sqlalchemy import select, func
+from sqlalchemy.exc import NoResultFound
 from utils.utils import get_week_of_month_int
 from utils.aggregation_functions import MESES_REVERSE
 from modelo import (Programacion, Descarga, Programa, Planta,
                     EstimacionPrograma, EstimacionDescarga, Timelog)
-
-USUARIO = "postgres"
-PASSWORD = "qwerty"
-BD = "Estimacion_Descargas"
-HOST = "localhost"
-PORT = "5432"
-BD_URI = f"postgresql+psycopg2://{USUARIO}:{PASSWORD}@{HOST}:{PORT}/{BD}"
 
 def nueva_ficha_psql_format(df):
     df_formateado = pd.DataFrame({
@@ -44,6 +38,7 @@ def plantas_psql_format(DF_PLANTAS):
     "alias": DF_PLANTAS["Alias"],
     })
     return df_plantas_formateado
+
 
 ### Programa ###
 
@@ -225,12 +220,10 @@ def get_timelog(session, timelog_name):
     return timelog
 
 def update_timelog(session, row, timelog):
-    programa = session.execute(
-        select(Programa).where(Programa.CC == row["CC"])
-    ).scalar_one()
+    programa = get_programa(session, row["CC"])
     planta = session.execute(
         select(Planta).where(func.upper(Planta.alias) == row["puerto"].upper())
-    ).scalar_one()
+    ).scalar_one_or_none()
     if not planta:
         raise ValueError(f"No se encontró la planta con alias {row['puerto']} en la base de datos.")
     elif not programa:
@@ -248,17 +241,15 @@ def update_timelog(session, row, timelog):
         timelog.fin_descarga_despachado=row["fin_descarga_despachado"]
         timelog.tiempo_total=row["tiempo_total"]
 
-    session.add(timelog)
+        session.add(timelog)
 
     return timelog
 
 def create_timelog(session, row):
-    programa = session.execute(
-        select(Programa).where(Programa.CC == row["CC"])
-    ).scalar_one()
+    programa = get_programa(session, row["CC"])
     planta = session.execute(
         select(Planta).where(func.upper(Planta.alias) == row["puerto"].upper())
-    ).scalar_one()
+    ).scalar_one_or_none()
     if not planta:
         raise ValueError(f"No se encontró la planta con alias {row['puerto']} en la base de datos.")
     elif not programa:

@@ -164,8 +164,13 @@ def extraer_timelog(file, sheet):
     return df_timelog
 
 def timelog_to_db_row(df, timelog_name):
+    CC = df.loc[11, "H"]
+    if pd.notna(CC):
+        CC = CC if CC.startswith("CC ") else "CC " + CC
+    else:
+        CC = None
     row = {
-        "CC": "CC " + df.loc[11, "H"] if pd.notna(df.loc[11, "H"]) else None,
+        "CC": CC,
         "puerto": df.loc[5, "C"],
         "nombre": timelog_name,
         "fecha": pd.to_datetime(df.loc[6, "C"], format="%d-%m-%Y"),
