@@ -1,0 +1,104 @@
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+
+Enum producto {
+  "Diesel A1"
+  "Jet A1"
+  "Gas 93"
+  "Gas 97"
+  "Diesel B"
+  "Fuel 6"
+  "VLSFO"
+  "IFO-380"
+}
+
+Table programas {
+  id integer [primary key, increment]
+  CC varchar [unique, not null]
+  nombre_bt varchar
+  proveedor varchar
+  origen varchar
+  inicio_ventana datetime
+  fin_ventana datetime
+  ETA datetime
+  monto float
+  laytime integer
+  agencia_de_naves varchar
+  surveyor_primario varchar
+  surveyor_secundario varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table plantas {
+  id integer [primary key, increment]
+  nombre varchar [unique]
+  ciudad varchar
+  alias varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table programaciones {
+  id integer [primary key, increment]
+  fecha date [unique]
+  semana integer
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table descargas {
+  id integer [primary key, increment]
+  volumen integer
+  producto producto
+  planta_id integer [ref: > plantas.id]
+  programa_id integer [ref: > programas.id]
+  programacion_id integer [ref: > programaciones.id]
+  fecha_inicio datetime
+  fecha_fin datetime
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table estimaciones_descargas {
+  id integer [primary key, increment]
+  descarga_id integer [ref: > descargas.id, unique]
+  ETA datetime
+  inicio_laytime datetime
+  tiempo_descarga float
+  demurrage_descarga float
+  estimacion_demurrage float
+  demurrage_unitario float
+  shifting float
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table estimaciones_programas {
+  id integer [primary key, increment]
+  programa_id integer [ref: > programas.id, unique]
+  tiempo_programa float
+  demurrage_programa float
+  mes integer [note: 'Debe estar entre 1 y 12']
+  año integer
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table timelogs {
+  id integer [primary key, increment]
+  nombre varchar [unique]
+  fecha date
+  programa_id integer [ref: > programas.id]
+  planta_id integer [ref: > plantas.id]
+  arribo_inicio_amarre float
+  inicio_amarre_fin_amarre float
+  fin_amarre_inicio_conexion float
+  inicio_conexion_fin_conexion float
+  fin_conexion_inicio_descarga float
+  inicio_descarga_fin_descarga float
+  fin_descarga_despachado float
+  tiempo_total float
+  created_at timestamp
+  updated_at timestamp
+}
