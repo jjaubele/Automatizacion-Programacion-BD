@@ -44,6 +44,12 @@ def app():
                             else:
                                 timelog = create_timelog(session, db_row)
                                 st.success(f"Timelog {timelog_name} creado correctamente.")
+                            campos_nulos = []
+                            for key in timelog.__dict__:
+                                if getattr(timelog, key) is None:
+                                    campos_nulos.append(key)
+                            if len(campos_nulos) > 0:
+                                st.warning(f"El timelog '{timelog.nombre}' tiene como campos nulos: {campos_nulos}")
                         except Exception as e:
                             st.error(f"Error al procesar el archivo {PATH_TIMELOG.name}: {e}")
                     session.commit()

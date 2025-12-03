@@ -156,6 +156,8 @@ def extraer_reporte_tankers(file):
 
     return df
 
+### Funciones para extracción de timelogs
+
 def extraer_timelog(file, sheet):
     df_timelog = pd.read_excel(file, sheet_name=sheet, header=None)
     df_timelog.index = range(1, len(df_timelog) + 1)
@@ -163,6 +165,15 @@ def extraer_timelog(file, sheet):
     df_timelog = df_timelog.replace(['#REF!', '#DIV/0!', '#N/A'], None)
     return df_timelog
 
+def search_activity_row(df, activities, column):
+    for row in range(1, len(df) + 1):
+        cell_value = df.at[row, column]
+        if isinstance(cell_value, str) and any(activity == cell_value.upper() for activity in activities):
+            return row
+        
+    print(f"Actividad(s) {activities} no encontrada(s) en la columna {column}.")
+    return None
+        
 def timelog_to_db_row(df, timelog_name):
     CC = df.loc[11, "H"]
     if pd.notna(CC):
@@ -174,6 +185,18 @@ def timelog_to_db_row(df, timelog_name):
         "puerto": df.loc[5, "C"],
         "nombre": timelog_name,
         "fecha": pd.to_datetime(df.loc[6, "C"], format="%d-%m-%Y"),
+        "vessel_arrived": pd.to_datetime(df.at[search_activity_row(df, ["VESSEL ARRIVED"], "S"), "T"], format="%d-%m-%Y %H:%M:%S"),
+        "start_mooring": pd.to_datetime(df.at[search_activity_row(df, ["START MOORING"], "S"), "T"], format="%d-%m-%Y %H:%M:%S"),
+        "end_mooring": pd.to_datetime(df.at[search_activity_row(df, ["END MOORING"], "S"), "T"], format="%d-%m-%Y %H:%M:%S"),
+        "start_hose_connection": pd.to_datetime(df.at[search_activity_row(df, ["START HOSE CONNECTION"], "S"), "T"], format="%d-%m-%Y %H:%M:%S"),
+        "end_hose_connection": pd.to_datetime(df.at[search_activity_row(df, ["END HOSE CONNECTION"], "S"), "T"], format="%d-%m-%Y %H:%M:%S"),
+        "start_discharge": pd.to_datetime(df.at[search_activity_row(df, ["START DISCHARGE"], "S"), "T"], format="%d-%m-%Y %H:%M:%S"),
+        "end_discharge": pd.to_datetime(df.at[search_activity_row(df, ["END DISCHARGE"], "S"), "T"], format="%d-%m-%Y %H:%M:%S"),
+        "vessel_dispatched": pd.to_datetime(df.at[search_activity_row(df, ["VESSEL DISPATCHED"], "S"), "T"], format="%d-%m-%Y %H:%M:%S"),
+        "nor_tendered": pd.to_datetime(df.at[search_activity_row(df, ["NOR TENDERED"], "B"), "G"], format="%d-%m-%Y %H:%M:%S") if search_activity_row(df, ["NOR TENDERED"], "B") else None,
+        "vessel_anchored": pd.to_datetime(df.at[search_activity_row(df, ["VESSEL ANCHORED", "DROP ANCHOR"], "B"), "G"], format="%d-%m-%Y %H:%M:%S") if search_activity_row(df, ["VESSEL ANCHORED", "DROP ANCHOR"], "B") else None,
+        "free_practique": pd.to_datetime(df.at[search_activity_row(df, ["FREE PRACTIQUE"], "B"), "G"], format="%d-%m-%Y %H:%M:%S") if search_activity_row(df, ["FREE PRACTIQUE"], "B") else None,
+        "all_fast": pd.to_datetime(df.at[search_activity_row(df, ["ALL FAST"], "B"), "G"], format="%d-%m-%Y %H:%M:%S") if search_activity_row(df, ["ALL FAST"], "B") else None,
         "arribo_inicio_amarre": df.at[12, "Q"],
         "inicio_amarre_fin_amarre": df.at[12, "R"],
         "fin_amarre_inicio_conexion": df.at[12, "S"],
@@ -183,8 +206,14 @@ def timelog_to_db_row(df, timelog_name):
         "fin_descarga_despachado": df.at[12, "W"],
         "tiempo_total": df.at[12, "X"],
     }
+
+    if not row["all_fast"]:
+        row["all_fast"] = row["end_mooring"]
     # verificar que no haya nulos
     for key, value in row.items():
-        if pd.isna(value):
-            raise Exception(f"El campo '{key}' no puede ser nulo.")
+        if key == "vessel_anchored" or key == "free_practique" or key == "nor_tendered":
+            continue
+        else:
+            if pd.isna(value):
+                raise Exception(f"El campo '{key}' no puede ser nulo.")
     return row

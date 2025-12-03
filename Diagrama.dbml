@@ -1,6 +1,3 @@
-// Use DBML to define your database structure
-// Docs: https://dbml.dbdiagram.io/docs
-
 Enum producto {
   "Diesel A1"
   "Jet A1"
@@ -91,6 +88,18 @@ Table timelogs {
   fecha date
   programa_id integer [ref: > programas.id]
   planta_id integer [ref: > plantas.id]
+  vessel_arrived datetime
+  start_mooring datetime
+  end_mooring datetime
+  start_hose_connection datetime
+  end_hose_connection datetime
+  start_discharge datetime
+  end_discharge datetime
+  vessel_dispatched datetime
+  nor_tendered datetime
+  vessel_anchored datetime
+  free_practique datetime
+  all_fast datetime
   arribo_inicio_amarre float
   inicio_amarre_fin_amarre float
   fin_amarre_inicio_conexion float
@@ -99,6 +108,7 @@ Table timelogs {
   inicio_descarga_fin_descarga float
   fin_descarga_despachado float
   tiempo_total float
+
   created_at timestamp
   updated_at timestamp
 }
