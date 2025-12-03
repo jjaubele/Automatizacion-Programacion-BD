@@ -3,6 +3,7 @@ from apps.login import login
 import apps.automatizacion
 import apps.cargar_programaciones
 import apps.cargar_timelogs
+import apps.consultas
 
 
 PASSWORD = st.secrets["auth"]["password"]
@@ -13,7 +14,8 @@ else:
     app_options = {
         "Automatización Programación Descargas": apps.automatizacion,
         "Carga de Programaciones a la Base de Datos": apps.cargar_programaciones,
-        "Carga de Timelogs a la Base de Datos": apps.cargar_timelogs
+        "Carga de Timelogs a la Base de Datos": apps.cargar_timelogs,
+        "Consultas a la Base de Datos": apps.consultas,
     }
 
     st.sidebar.title("Navegación")
