@@ -10,20 +10,6 @@ from sqlalchemy.orm import Session
 from utils.loading_functions import (update_programas, get_programacion, create_programacion, 
                                      create_descargas, update_estimaciones_programas)
 
-PASSWORD = st.secrets["auth"]["password"]
-
-def login():
-    st.title("🔐 Acceso Restringido")
-
-    pwd = st.text_input("Contraseña", type="password")
-
-    if st.button("Entrar"):
-        if pwd == PASSWORD:
-            st.session_state["logged"] = True
-            st.rerun()
-        else:
-            st.error("Contraseña incorrecta")
-
 def app():
     st.title("Automatización Programación Descargas")
 
@@ -120,8 +106,3 @@ def app():
     if st.button("Cerrar sesión"):
         st.session_state.clear()
         st.rerun()
-
-if "logged" not in st.session_state:
-    login()
-else:
-    app()

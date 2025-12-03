@@ -6,20 +6,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from utils.loading_functions import (create_timelog, get_timelog, update_timelog)
 
-PASSWORD = st.secrets["auth"]["password"]
-
-def login():
-    st.title("🔐 Acceso Restringido")
-
-    pwd = st.text_input("Contraseña", type="password")
-
-    if st.button("Entrar"):
-        if pwd == PASSWORD:
-            st.session_state["logged"] = True
-            st.rerun()
-        else:
-            st.error("Contraseña incorrecta")
-
 def app():
     st.title("Carga de Timelogs a la Base de Datos")
 
@@ -59,8 +45,3 @@ def app():
     if st.button("Cerrar sesión"):
         st.session_state.clear()
         st.rerun()
-
-if "logged" not in st.session_state:
-    login()
-else:
-    app()
