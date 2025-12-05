@@ -5,10 +5,17 @@ __pycache__/
 *.xlsx
 *.xlsm
 *.xlsb
-*.pdf
 
 # Excluir al archivo de distancias de la regla anterior
 !Distancias entre puertos.xlsx
 
 # Ignorar archivos de entorno virtual
 venv/
+*.env
+.streamlit/
+
+# Ignorar notebook de pruebas de consultas
+Consultas_db.ipynb
+
+# Ignorar archivos de base de datos
+backup.dump

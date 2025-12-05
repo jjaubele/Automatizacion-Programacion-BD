@@ -39,6 +39,7 @@ class Programa(Base):
     estimacion_programa = relationship("EstimacionPrograma", back_populates="programa", cascade="all, delete-orphan")
     plantas = relationship("Planta", secondary="descargas", viewonly=True)
     programaciones = relationship("Programacion", secondary="descargas", viewonly=True)
+    timelogs = relationship("Timelog", back_populates="programa", cascade="all, delete-orphan")
 
 
 class Planta(Base):
@@ -54,6 +55,7 @@ class Planta(Base):
     descargas = relationship("Descarga", back_populates="planta", cascade="all, delete-orphan")
     programas = relationship("Programa", secondary="descargas", viewonly=True)
     programaciones = relationship("Programacion", secondary="descargas", viewonly=True)
+    timelogs = relationship("Timelog", back_populates="planta", cascade="all, delete-orphan")
 
 
 class Programacion(Base):
@@ -122,3 +124,39 @@ class EstimacionPrograma(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     programa = relationship("Programa", back_populates="estimacion_programa", uselist=False)
+
+class Timelog(Base):
+    __tablename__ = "timelogs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    nombre = Column(String, unique=True)
+    fecha = Column(Date)
+    programa_id = Column(Integer, ForeignKey("programas.id", ondelete="CASCADE"))
+    planta_id = Column(Integer, ForeignKey("plantas.id", ondelete="CASCADE"))
+    vessel_arrived = Column(DateTime)
+    start_mooring = Column(DateTime)
+    end_mooring = Column(DateTime)
+    start_hose_connection = Column(DateTime)
+    end_hose_connection = Column(DateTime)
+    start_discharge = Column(DateTime)
+    end_discharge = Column(DateTime)
+    vessel_dispatched = Column(DateTime)
+    #########################
+    nor_tendered = Column(DateTime)
+    vessel_anchored = Column(DateTime)
+    free_practique = Column(DateTime)
+    all_fast = Column(DateTime)
+    #########################
+    arribo_inicio_amarre = Column(Float)
+    inicio_amarre_fin_amarre = Column(Float)
+    fin_amarre_inicio_conexion = Column(Float)
+    inicio_conexion_fin_conexion = Column(Float)
+    fin_conexion_inicio_descarga = Column(Float)
+    inicio_descarga_fin_descarga = Column(Float)
+    fin_descarga_despachado = Column(Float)
+    tiempo_total = Column(Float)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    programa = relationship("Programa", back_populates="timelogs")
+    planta = relationship("Planta", back_populates="timelogs")

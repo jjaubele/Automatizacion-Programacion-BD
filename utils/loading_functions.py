@@ -5,16 +5,12 @@ import pandas as pd
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(BASE_DIR)
 
-from sqlalchemy import select
+from sqlalchemy import select, func
+from sqlalchemy.exc import NoResultFound
 from utils.utils import get_week_of_month_int
 from utils.aggregation_functions import MESES_REVERSE
 from modelo import (Programacion, Descarga, Programa, Planta,
-                    EstimacionPrograma, EstimacionDescarga)
-
-USUARIO = "postgres"
-PASSWORD = "qwerty"
-BD = "Estimacion_Descargas"
-BD_URI = f"postgresql+psycopg2://{USUARIO}:{PASSWORD}@localhost:5432/{BD}"
+                    EstimacionPrograma, EstimacionDescarga, Timelog)
 
 def nueva_ficha_psql_format(df):
     df_formateado = pd.DataFrame({
@@ -42,6 +38,7 @@ def plantas_psql_format(DF_PLANTAS):
     "alias": DF_PLANTAS["Alias"],
     })
     return df_plantas_formateado
+
 
 ### Programa ###
 
@@ -213,3 +210,89 @@ def update_estimaciones_programas(session, df):
             estimaciones_programas.append(actualizado_estimacion_programa)
     session.commit()
     return estimaciones_programas
+
+### Timelog ###
+
+def get_timelog(session, timelog_name):
+    timelog = session.execute(
+        select(Timelog).where(Timelog.nombre == timelog_name)
+    ).scalar_one_or_none()
+    return timelog
+
+def update_timelog(session, row, timelog):
+    programa = get_programa(session, row["CC"])
+    planta = session.execute(
+        select(Planta).where(func.upper(Planta.alias) == row["puerto"].upper())
+    ).scalar_one_or_none()
+    if not planta:
+        raise ValueError(f"No se encontró la planta con alias {row['puerto']} en la base de datos.")
+    elif not programa:
+        raise ValueError(f"No se encontró el programa con CC {row['CC']} en la base de datos.")
+    else:
+        timelog.programa = programa
+        timelog.planta = planta
+        timelog.fecha=row["fecha"]
+        timelog.vessel_arrived=row["vessel_arrived"]
+        timelog.start_mooring=row["start_mooring"]
+        timelog.end_mooring=row["end_mooring"]
+        timelog.start_hose_connection=row["start_hose_connection"]
+        timelog.end_hose_connection=row["end_hose_connection"]
+        timelog.start_discharge=row["start_discharge"]
+        timelog.end_discharge=row["end_discharge"]
+        timelog.vessel_dispatched=row["vessel_dispatched"]
+        timelog.nor_tendered=row["nor_tendered"]
+        timelog.vessel_anchored=row["vessel_anchored"]
+        timelog.free_practique=row["free_practique"]
+        timelog.all_fast=row["all_fast"]
+        timelog.arribo_inicio_amarre=row["arribo_inicio_amarre"]
+        timelog.inicio_amarre_fin_amarre=row["inicio_amarre_fin_amarre"]
+        timelog.fin_amarre_inicio_conexion=row["fin_amarre_inicio_conexion"]
+        timelog.inicio_conexion_fin_conexion=row["inicio_conexion_fin_conexion"]
+        timelog.fin_conexion_inicio_descarga=row["fin_conexion_inicio_descarga"]
+        timelog.inicio_descarga_fin_descarga=row["inicio_descarga_fin_descarga"]
+        timelog.fin_descarga_despachado=row["fin_descarga_despachado"]
+        timelog.tiempo_total=row["tiempo_total"]
+
+        session.add(timelog)
+
+    return timelog
+
+def create_timelog(session, row):
+    programa = get_programa(session, row["CC"])
+    planta = session.execute(
+        select(Planta).where(func.upper(Planta.alias) == row["puerto"].upper())
+    ).scalar_one_or_none()
+    if not planta:
+        raise ValueError(f"No se encontró la planta con alias {row['puerto']} en la base de datos.")
+    elif not programa:
+        raise ValueError(f"No se encontró el programa con CC {row['CC']} en la base de datos.")
+    else:
+        nuevo_timelog = Timelog(
+            programa=programa,
+            planta=planta,
+            nombre=row["nombre"],
+            fecha=row["fecha"],
+            vessel_arrived=row["vessel_arrived"],
+            start_mooring=row["start_mooring"],
+            end_mooring=row["end_mooring"],
+            start_hose_connection=row["start_hose_connection"],
+            end_hose_connection=row["end_hose_connection"],
+            start_discharge=row["start_discharge"],
+            end_discharge=row["end_discharge"],
+            vessel_dispatched=row["vessel_dispatched"],
+            nor_tendered=row["nor_tendered"],
+            vessel_anchored=row["vessel_anchored"],
+            free_practique=row["free_practique"],
+            all_fast=row["all_fast"],
+            arribo_inicio_amarre=row["arribo_inicio_amarre"],
+            inicio_amarre_fin_amarre=row["inicio_amarre_fin_amarre"],
+            fin_amarre_inicio_conexion=row["fin_amarre_inicio_conexion"],
+            inicio_conexion_fin_conexion=row["inicio_conexion_fin_conexion"],
+            fin_conexion_inicio_descarga=row["fin_conexion_inicio_descarga"],
+            inicio_descarga_fin_descarga=row["inicio_descarga_fin_descarga"],
+            fin_descarga_despachado=row["fin_descarga_despachado"],
+            tiempo_total=row["tiempo_total"],
+        )
+        session.add(nuevo_timelog)
+
+    return nuevo_timelog
