@@ -1,18 +1,39 @@
 # Automatizacion-Programacion-BD
 
-## Instrucciones de uso app remota
+## Prerrequisitos
+- Python 3.8+
+- PostgreSQL
 
-1. Entrar a la [Automatización](https://automatizacion-programacion-bd.streamlit.app/)
+## Antes de comenzar
+- Ejecutar ``pip install --upgrade pip`` y ``pip install -r requirements.txt``
 
-2. Subir una programación, una versión actualizada de la nueva ficha, un reporte tankers (opcional) y seleccionar una fecha de programación. Hacer click en "Procesar Archivos", esto generará las tablas descargables en formato excel y csv.
+Para sembrar la base de datos se requiere de un .env con el siguiente formato:
 
-3. Hacer click en "Descargar Archivo".
+```env
+USUARIO_LOCAL=postgres
+PASSWORD_LOCAL=xxxxxx
+BD_LOCAL=xxxxxx
+HOST_LOCAL=localhost
+PORT_LOCAL=5432
+BD_URI_LOCAL=postgresql+psycopg2://${USUARIO_LOCAL}:${PASSWORD_LOCAL}@${HOST_LOCAL}:${PORT_LOCAL}/${BD_LOCAL}
 
-## Instrucciones de uso app descargas
+USUARIO_REMOTE=postgres
+PASSWORD_REMOTE=xxxxxx
+BD_REMOTE=xxxxxx
+HOST_REMOTE=xxxxxx
+PORT_REMOTE=xxxxxx
+BD_URI_REMOTE=postgresql+psycopg2://${USUARIO_REMOTE}:${PASSWORD_REMOTE}@${HOST_REMOTE}:${PORT_REMOTE}/${BD_REMOTE}
+```
 
-1. Entrar a la [Aplicación](https://extraccion-descargas-programacion.streamlit.app/)
+Para pruebas en local, además agregar `.streamlit/secrets.toml` al repo de trabajo local con el siguiente formato:
 
-2. Subir una programación y seleccionar una fecha de programación (fecha opcional, solo para generar el nombre del archivo). Hacer click en "Procesar Archivos", esto generará el Archivo *Descargas Programación %DD-%MM-%YYYY*.
+```toml
+[connections]
+BD_URI = "postgresql+psycopg2://usuario:contraseña@host:puerto/nombre_bd"
 
-3. Hacer click en "Descargar Archivo".
+[auth]
+password = "contraseña"
+```
+
+El código para sembrar la Base de Datos se encuentra en Load_db.ipynb.
 
